@@ -1,0 +1,74 @@
+<!-- templates/profil_nasabah.html -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Profil Nasabah - {{ nasabah.nama }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <a href="{{ url_for('dashboard_karyawan') }}" class="btn btn-secondary mb-4">← Kembali ke Dashboard</a>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Profil Nasabah: {{ nasabah.nama }}</h4>
+        </div>
+        <div class="card-body">
+            {% if nasabah %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Tanggal Lahir:</strong><br>{{ nasabah.tgl_lahir }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>No. HP:</strong><br>{{ nasabah.no_hp }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Alamat:</strong><br>{{ nasabah.alamat }}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Produk Dimiliki:</strong><br>
+                    {% if nasabah.produk_dimiliki %}
+                        <ul>
+                            {% for produk in nasabah.produk_dimiliki %}
+                                <li>{{ produk }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>Belum memiliki produk</em>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Keterangan:</strong><br>
+                    <p>{{ nasabah.keterangan }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Riwayat Referral:</strong><br>
+                    {% if nasabah.referral_histori %}
+                        <ul class="list-group">
+                            {% for r in nasabah.referral_histori %}
+                                <li class="list-group-item">
+                                    <strong>{{ r.product }}</strong> - {{ r.description }}<br>
+                                    <small class="text-muted">{{ r.date }}</small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>Belum ada referral</em>
+                    {% endif %}
+                </div>
+            {% else %}
+                <p class="text-danger">Data nasabah tidak ditemukan.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
