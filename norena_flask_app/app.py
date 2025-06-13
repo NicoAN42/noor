@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import random
 from datetime import datetime
+from flask import jsonify
 
 app = Flask(__name__)
 app.secret_key = 'noreana_secret_key'
@@ -39,18 +40,20 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        role = request.form['role']
         user = users.get(username)
-        if user and user['password'] == password and user['role'] == role:
+
+        if user and user['password'] == password:
             session['username'] = username
-            session['role'] = role
-            if role == 'karyawan':
+            session['role'] = user['role']
+            if user['role'] == 'karyawan':
                 return redirect(url_for('dashboard_karyawan'))
-            elif role == 'pic':
+            elif user['role'] == 'pic':
                 return redirect(url_for('dashboard_pic'))
-            elif role == 'admin':
+            elif user['role'] == 'admin':
                 return redirect(url_for('dashboard_admin'))
-        return render_template('login.html', error='Invalid credentials or role')
+        else:
+            return render_template('login.html', error='Username atau password salah.')
+
     return render_template('login.html')
 
 @app.route('/dashboard/karyawan', methods=['GET', 'POST'])
@@ -153,6 +156,15 @@ def dashboard_admin():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/validate-username')
+def validate_username():
+    username = request.args.get('username')
+    if username in users:
+        return jsonify({'valid': True})
+    else:
+        return jsonify({'valid': False})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
