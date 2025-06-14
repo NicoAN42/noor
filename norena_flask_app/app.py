@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from datetime import datetime
 import uuid
 import re
+from flask import flash, redirect
 
 
 app = Flask(__name__)
@@ -265,6 +266,7 @@ def dashboard_karyawan():
                     hasil_pencarian.append({
                         'id': n['id'],
                         'nama': n['nama'],
+                        'nik': n['nik'],
                         'tgl_lahir': n['tgl_lahir'],
                         'no_hp': mask_no_hp(n['no_hp'],role),
                         'alamat': mask_alamat(n['alamat'],role),
@@ -298,10 +300,13 @@ def dashboard_karyawan():
 def tambah_nasabah():
     nama = request.form['nama'].strip()
     nik = request.form['nik'].strip()
+    no_hp = request.form['no_hp'].strip()
+    alamat = request.form['alamat'].strip()
     tgl_lahir = request.form['tgl_lahir'].strip()
     produk = request.form.getlist('produk')
     keterangan = request.form['keterangan']
-
+    
+    flash('Data nasabah berhasil disimpan!', 'success')  
     # 🔒 Validasi NIK hanya angka dan panjang 16 digit
         # VALIDASI NIK
     if not nik.isdigit() or len(nik) != 16:
@@ -343,16 +348,21 @@ def tambah_nasabah():
                                produk_list=produk_list,
                                error_message="NIK sudah terdaftar, silakan gunakan NIK lain.")
         
+    
+        
     nasabah_id = str(uuid.uuid4())[:8]
     new_nasabah = {
         'id': nasabah_id,
         'nama': nama,
         'nik': nik,
+        'no_hp': no_hp,
+        'alamat': alamat,
         'tgl_lahir': tgl_lahir,
         'produk': produk,
         'keterangan': keterangan,
         'referral_histori': []
     }
+    
 
     nasabah_list.append(new_nasabah)
 
@@ -364,7 +374,10 @@ def tambah_nasabah():
             'keterangan': ref_ket,
             'tanggal': datetime.now().strftime('%Y-%m-%d')
         })
-
+        
+        
+    # Simpan nasabah...
+   
     return redirect(url_for('dashboard_karyawan'))
 
 @app.route('/tambah_referral', methods=['POST'])

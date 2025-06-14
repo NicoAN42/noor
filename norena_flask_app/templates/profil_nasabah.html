@@ -1,66 +1,131 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <title>Profil Nasabah - {{ nasabah.nama }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Profil Nasabah - {{ nasabah.nama }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #e9f1ff, #ffffff);
+      font-family: 'Segoe UI', 'Poppins', sans-serif;
+      color: #333;
+    }
+
+    .card {
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      animation: fadeIn 0.6s ease;
+    }
+
+    .card-header {
+      background-color: #0d6efd;
+      color: #fff;
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 1rem;
+    }
+
+    .btn-secondary {
+      border-radius: 0.6rem;
+    }
+
+    .list-group-item {
+      border: none;
+      border-bottom: 1px solid #eee;
+    }
+
+    .floating-recommendation-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1050;
+      display: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .floating-recommendation-btn.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .modal-content {
+      border-radius: 1rem;
+      animation: fadeModal 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeModal {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container mt-5">
-    <a href="{{ url_for('dashboard_karyawan') }}" class="btn btn-secondary mb-4">← Kembali ke Dashboard</a>
+<div class="container py-5">
+  <a href="{{ url_for('dashboard_karyawan') }}" class="btn btn-secondary mb-4 shadow-sm">
+    <i class="bi bi-arrow-left-circle"></i> Kembali ke Dashboard
+  </a>
 
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Profil Nasabah: {{ nasabah.nama }}</h4>
-        </div>
-        <div class="card-body">
-            {% if nasabah %}
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Tanggal Lahir:</strong><br>{{ nasabah.tgl_lahir }}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>No. HP:</strong><br>{{ nasabah.no_hp }}
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <strong>Alamat:</strong><br>{{ nasabah.alamat }}
-                </div>
-
-                {% if nasabah.keterangan %}
-                <div class="mb-3">
-                    <strong>Keterangan:</strong><br>
-                    <p>{{ nasabah.keterangan }}</p>
-                </div>
-                {% endif %}
-
-                <div class="mb-4">
-                    <strong>Riwayat Referral:</strong><br>
-                    {% if nasabah.referral_histori %}
-                        <ul class="list-group">
-                            {% for r in nasabah.referral_histori %}
-                                <li class="list-group-item">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <strong>{{ r.product }}</strong> - {{ r.description }}
-                                        </div>
-                                        <small class="text-muted">{{ r.date }}</small>
-                                    </div>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <em>Belum ada referral</em>
-                    {% endif %}
-                </div>
-
-            {% else %}
-                <p class="text-danger">Data nasabah tidak ditemukan.</p>
-            {% endif %}
-        </div>
+  <div class="card">
+    <div class="card-header">
+      <h4 class="mb-0"><i class="bi bi-person-vcard-fill me-2"></i> Profil Nasabah: {{ nasabah.nama }}</h4>
     </div>
+    <div class="card-body">
+      {% if nasabah %}
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong class="text-primary">NIK:</strong><br>{{ nasabah.nik or '-' }}
+          </div>
+          <div class="col-md-6">
+            <strong class="text-primary">Tanggal Lahir:</strong><br>{{ nasabah.tgl_lahir }}
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong class="text-primary">No. HP:</strong><br>{{ nasabah.no_hp }}
+          </div>
+          <div class="col-md-6">
+            <strong class="text-primary">Alamat:</strong><br>{{ nasabah.alamat }}
+          </div>
+        </div>
+
+        {% if nasabah.keterangan %}
+        <div class="mb-3">
+          <strong class="text-primary">Keterangan:</strong>
+          <p>{{ nasabah.keterangan }}</p>
+        </div>
+        {% endif %}
+
+        <div class="mb-4">
+          <strong class="text-primary">Riwayat Referral:</strong>
+          {% if nasabah.referral_histori %}
+            <ul class="list-group">
+              {% for r in nasabah.referral_histori %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div><strong>{{ r.product }}</strong> – {{ r.description }}</div>
+                <small class="text-muted">{{ r.date }}</small>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <em class="text-muted">Belum ada referral.</em>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="text-danger">Data nasabah tidak ditemukan.</p>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
 <!-- Modal Rekomendasi AI -->
@@ -69,51 +134,52 @@
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title" id="recommendationModalLabel">Rekomendasi Produk AI</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        <h5 class="modal-title" id="recommendationModalLabel">
+          <i class="bi bi-stars me-2"></i> Rekomendasi Produk AI
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <div class="modal-body">
-        <p>Berdasarkan data nasabah ini, berikut adalah saran produk dari AI:</p>
-        <ul>
-        {% for item in rekomendasi_ai %}
-            <li><strong>{{ item.produk }}</strong>: {{ item.script }}</li>
-        {% endfor %}
+        <p class="mb-3">Berdasarkan data nasabah ini, berikut adalah saran produk dari AI:</p>
+        <ul class="list-unstyled">
+          {% for item in rekomendasi_ai %}
+          <li class="mb-2">
+            <strong class="text-success">{{ item.produk }}</strong>: {{ item.script }}
+          </li>
+          {% endfor %}
         </ul>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Minimized button (initially hidden) -->
-<button id="minimizedBtn" class="btn btn-success position-fixed bottom-0 end-0 m-3" style="display: none; z-index: 1050;">
-    🎯 Rekomendasi AI
+<!-- Tombol Mengambang -->
+<button id="minimizedBtn" class="btn btn-success shadow-lg floating-recommendation-btn">
+  🎯 Rekomendasi AI
 </button>
 {% endif %}
 
-<!-- Script for modal auto show and minimize/restore -->
+<!-- Show Modal Otomatis dan Floating Button -->
 {% if show_modal and rekomendasi_ai %}
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    var recommendationModal = new bootstrap.Modal(document.getElementById('recommendationModal'));
-    var minimizedBtn = document.getElementById('minimizedBtn');
+  document.addEventListener("DOMContentLoaded", function () {
+    var modal = new bootstrap.Modal(document.getElementById('recommendationModal'));
+    var button = document.getElementById('minimizedBtn');
 
-    // Show modal on load
-    recommendationModal.show();
+    modal.show();
 
-    // When modal is closed, show minimized button
     document.getElementById('recommendationModal').addEventListener('hidden.bs.modal', function () {
-        minimizedBtn.style.display = 'block';
+      button.classList.add('show');
     });
 
-    // When minimized button clicked, show modal again
-    minimizedBtn.addEventListener('click', function () {
-        recommendationModal.show();
-        minimizedBtn.style.display = 'none';
+    button.addEventListener('click', function () {
+      modal.show();
+      button.classList.remove('show');
     });
-});
+  });
 </script>
 {% endif %}
 
