@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from datetime import datetime
 import uuid
+import re
+
 
 app = Flask(__name__)
 app.secret_key = 'noreana_secret_key'
@@ -17,6 +19,7 @@ nasabah_list = [
     {
         'id': '1',
         'nama': 'Andi Wijaya',
+        'nik': '3173123456780001',
         'tgl_lahir': '2025-06-13',
         'no_hp': '081234567890',
         'alamat': 'Jl. Merdeka No.1, Jakarta',
@@ -30,6 +33,7 @@ nasabah_list = [
     {
         'id': '2',
         'nama': 'Budi Santoso',
+        'nik': '3173123456780002',
         'tgl_lahir': '1985-08-30',
         'no_hp': '082134567891',
         'alamat': 'Jl. Sudirman No.55, Bandung',
@@ -42,6 +46,7 @@ nasabah_list = [
     {
         'id': '3',
         'nama': 'Citra Lestari',
+        'nik': '3173123456780003',
         'tgl_lahir': '1993-11-22',
         'no_hp': '083134567892',
         'alamat': 'Jl. Asia Afrika No.3, Surabaya',
@@ -54,6 +59,7 @@ nasabah_list = [
     {
         'id': '4',
         'nama': 'Dedi Gunawan',
+        'nik': '3173123456780004',
         'tgl_lahir': '1979-03-09',
         'no_hp': '085134567893',
         'alamat': 'Jl. Gajah Mada No.77, Medan',
@@ -66,9 +72,10 @@ nasabah_list = [
     {
         'id': '5',
         'nama': 'Eka Prasetya',
+        'nik': '3173123456780005',
         'tgl_lahir': '1995-07-01',
         'no_hp': '086134567894',
-        'alamat': 'Jl. Diponegoro No.88, Semarang',
+        'alamat': 'Diponegoro No.88, Semarang',
         'produk': ['Kartu Kredit', 'Deposito'],
         'keterangan': 'Ingin investasi yang aman',
         'referral_histori': [
@@ -78,6 +85,7 @@ nasabah_list = [
     {
         'id': '6',
         'nama': 'Fitri Ayu',
+        'nik': '3173123456780006',
         'tgl_lahir': '1988-02-14',
         'no_hp': '087134567895',
         'alamat': 'Jl. Malioboro No.5, Yogyakarta',
@@ -90,6 +98,7 @@ nasabah_list = [
     {
         'id': '7',
         'nama': 'Gilang Saputra',
+        'nik': '3173123456780007',
         'tgl_lahir': '1991-09-17',
         'no_hp': '089134567896',
         'alamat': 'Jl. Kartini No.10, Makassar',
@@ -102,6 +111,40 @@ nasabah_list = [
 ]
 produk_list = ["Kartu Kredit", "KPR", "KKB", "Tahapan BCA", "Deposito", "BCA Syariah", "BCA Life"]
 
+
+
+def mask_no_hp(no_hp, role):
+    if role in ['admin', 'pic']:
+        return no_hp
+    if no_hp and len(no_hp) >= 4:
+        return 'xxxxxx' + no_hp[-4:]
+    return 'xxxxxx0000'
+
+def mask_alamat(alamat, role):
+    if role in ['admin', 'pic']:
+        return alamat
+
+    if not alamat:
+        return 'xxx'
+
+    import re
+    parts = re.split(r'[\s,]+', alamat.strip())
+
+    masked_parts = []
+    for i, word in enumerate(parts):
+        if len(word) <= 4:
+            masked = word[0] + 'x' * (len(word) - 1) if len(word) > 1 else word
+        else:
+            visible = word[:4]
+            masked = visible + 'x' * (len(word) - 4)
+
+        if i == 0 or i == len(parts) - 1:
+            masked_parts.append(masked)
+        else:
+            masked_parts.append('x' * len(word))
+
+    return ' '.join(masked_parts)
+
 @app.route('/')
 def home():
     return redirect(url_for('login'))
@@ -110,14 +153,73 @@ def generate_product_recommendation(nasabah):
     import datetime
     today = datetime.date.today()
     tgl_lahir = datetime.datetime.strptime(nasabah['tgl_lahir'], '%Y-%m-%d').date()
-    age = (today - tgl_lahir).days // 365
+    usia = (today - tgl_lahir).days // 365
 
-    if age < 30:
-        return ['Tabungan Rencana', 'Investasi Online', 'Reksa Dana']
-    elif age < 50:
-        return ['Deposito', 'Kartu Kredit', 'Asuransi Jiwa']
+    produk_dimiliki = set([p.lower() for p in nasabah.get('produk', [])])
+    keterangan = nasabah.get('keterangan', '').lower()
+
+    keyword_map = {
+        'investasi': ['Reksa Dana', 'Investasi Online', 'Deposito'],
+        'anak': ['Pendidikan Anak', 'Asuransi Jiwa', 'Tabungan Rencana'],
+        'menikah': ['Asuransi Jiwa', 'Tabungan Rencana'],
+        'rumah': ['KPR', 'Renovation Loan'],
+        'renovasi': ['Renovation Loan'],
+        'pindah': ['Tabungan Rencana'],
+        'perjalanan': ['Travel Insurance'],
+        'luar negeri': ['Travel Insurance', 'Kartu Kredit'],
+        'digital': ['Investasi Online'],
+        'pensiun': ['Pensiun Plus', 'Asuransi Kesehatan'],
+        'mobile banking': ['Investasi Online', 'Reksa Dana']
+    }
+
+    produk_script = {
+        "Kartu Kredit": "Dengan Kartu Kredit ini, Bapak/Ibu bisa menikmati kemudahan bertransaksi harian, mendapatkan promo menarik, dan merasa lebih tenang saat bepergian. Semuanya dalam satu genggaman.",
+        "KPR": "Kami tahu memiliki rumah sendiri adalah impian banyak orang. Dengan KPR ini, impian itu bisa terwujud lebih cepat dan mudah, tanpa harus menunggu terlalu lama.",
+        "KKB": "Kami ingin Bapak/Ibu bisa memiliki kendaraan idaman tanpa harus memberatkan. Cicilan ringan dan proses cepat siap membantu mobilitas Anda sehari-hari.",
+        "Tahapan BCA": "Tahapan BCA cocok untuk Bapak/Ibu yang ingin mengatur keuangan dengan nyaman. Semua transaksi mudah, aman, dan bisa diakses kapan saja.",
+        "Deposito": "Jika Bapak/Ibu ingin dana aman namun tetap bertumbuh, Deposito bisa jadi solusi terbaik. Bunga menarik dan fleksibel, cocok untuk simpanan jangka menengah dan panjang.",
+        "BCA Syariah": "Untuk Bapak/Ibu yang ingin produk keuangan berbasis nilai-nilai Islam, kami hadirkan BCA Syariah dengan prinsip bagi hasil yang adil dan transparan.",
+        "BCA Life": "Melindungi orang tercinta adalah bentuk cinta yang nyata. BCA Life hadir untuk memberikan ketenangan bagi Anda dan keluarga, jika hal tak terduga terjadi.",
+        "Reksa Dana": "Reksa Dana cocok bagi Bapak/Ibu yang ingin mulai berinvestasi tapi tak punya banyak waktu. Dana dikelola profesional agar bisa tumbuh dengan optimal.",
+        "Investasi Online": "Ingin masa depan lebih terjamin tapi tetap fleksibel? Investasi Online bisa diakses di mana pun, kapan pun. Mudah, aman, dan menguntungkan.",
+        "Pendidikan Anak": "Masa depan anak adalah prioritas setiap orang tua. Dengan produk ini, Bapak/Ibu bisa menyiapkan pendidikan terbaik sejak dini, tanpa beban di kemudian hari.",
+        "Pensiun Plus": "Nikmati masa pensiun dengan tenang dan nyaman. Kami bantu Bapak/Ibu menyiapkan hari tua agar tetap aktif, bahagia, dan bebas kekhawatiran finansial.",
+        "Asuransi Jiwa": "Melindungi keluarga saat kita sudah tak ada, adalah bentuk kasih sayang yang tak ternilai. Asuransi Jiwa memberikan perlindungan finansial untuk mereka yang Bapak/Ibu cintai.",
+        "Asuransi Kesehatan": "Kesehatan adalah aset terpenting. Asuransi Kesehatan hadir untuk melindungi Bapak/Ibu dari risiko biaya medis yang tak terduga, sehingga bisa fokus pada pemulihan.",
+        "Travel Insurance": "Saat bepergian jauh, hal tak terduga bisa saja terjadi. Travel Insurance memberi perlindungan agar perjalanan Bapak/Ibu tetap tenang dan menyenangkan.",
+        "Tabungan Rencana": "Setiap impian finansial dimulai dari perencanaan. Dengan Tabungan Rencana, Bapak/Ibu bisa menabung otomatis menuju tujuan keuangan yang lebih pasti.",
+        "Renovation Loan": "Rumah adalah tempat pulang yang nyaman. Renovation Loan ini membantu Bapak/Ibu memperbaiki atau memperindah rumah tanpa perlu menguras tabungan."
+    }
+
+    rekomendasi_dari_keterangan = set()
+    for keyword, produk_list in keyword_map.items():
+        if keyword in keterangan:
+            rekomendasi_dari_keterangan.update(produk_list)
+
+    rekomendasi_dari_usia = set()
+    if usia < 30:
+        rekomendasi_dari_usia.update(['Tabungan Rencana', 'Investasi Online', 'Reksa Dana'])
+    elif usia < 50:
+        rekomendasi_dari_usia.update(['Kartu Kredit', 'Asuransi Jiwa', 'Deposito'])
     else:
-        return ['Pensiun Plus', 'Asuransi Kesehatan', 'Deposito']
+        rekomendasi_dari_usia.update(['Pensiun Plus', 'Asuransi Kesehatan', 'Deposito'])
+
+    gabungan = (rekomendasi_dari_keterangan | rekomendasi_dari_usia)
+    hasil_akhir = [p for p in gabungan if p.lower() not in produk_dimiliki]
+
+    if not hasil_akhir:
+        fallback = ['Deposito', 'Kartu Kredit', 'Asuransi Jiwa']
+        hasil_akhir = [p for p in fallback if p.lower() not in produk_dimiliki]
+
+    # Gabungkan dengan script
+    hasil_dengan_script = []
+    for p in hasil_akhir:
+        hasil_dengan_script.append({
+            'produk': p,
+            'script': produk_script.get(p, 'Produk ini direkomendasikan untuk kebutuhan Anda.')
+        })
+
+    return hasil_dengan_script
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -138,30 +240,48 @@ def dashboard_karyawan():
     if session.get('role') != 'karyawan':
         return redirect(url_for('login'))
 
+        
     hasil_pencarian = []
     rekomendasi_ai = []
     pencarian_dilakukan = False
     nasabah_not_found = False
     selected_nasabah = None
     show_modal = False
+    role = session.get('role')  
 
     if request.method == 'POST':
         nama = request.form.get('nama', '').strip().lower()
-        tgl_lahir = request.form.get('tgl_lahir', '').strip()
+        nik = request.form.get('nik', '').strip()
 
-        if nama:  # hanya lakukan pencarian jika nama tidak kosong
-            hasil_pencarian = [n for n in nasabah_list if nama in n['nama'].lower()]
-            if tgl_lahir:
-                hasil_pencarian = [n for n in hasil_pencarian if n['tgl_lahir'] == tgl_lahir]
+        if nama:
+            filtered = [n for n in nasabah_list if nama in n['nama'].lower()]
+            if nik:
+                filtered = [n for n in filtered if n.get('nik') == nik]
 
-            if not hasil_pencarian:
+            if not filtered:
                 nasabah_not_found = True
-            elif len(hasil_pencarian) == 1:
-                selected_nasabah = hasil_pencarian[0]
-                rekomendasi_ai = generate_product_recommendation(selected_nasabah)
+            else:
+                for n in filtered:
+                    hasil_pencarian.append({
+                        'id': n['id'],
+                        'nama': n['nama'],
+                        'tgl_lahir': n['tgl_lahir'],
+                        'no_hp': mask_no_hp(n['no_hp'],role),
+                        'alamat': mask_alamat(n['alamat'],role),
+                        'produk': n['produk'],
+                        'keterangan': n.get('keterangan', ''),
+                        'referral_histori': n.get('referral_histori', []),
+                        'rekomendasi_ai': generate_product_recommendation(n)
+                    })
+
+                if len(filtered) == 1:
+                    selected_nasabah = filtered[0]
+                    rekomendasi_ai = generate_product_recommendation(selected_nasabah)
         else:
-            nasabah_not_found = True  # jika nama kosong
-            
+            nasabah_not_found = True
+
+        pencarian_dilakukan = True
+
     return render_template(
         'dashboard_karyawan.html',
         username=session.get('username'),
@@ -177,14 +297,57 @@ def dashboard_karyawan():
 @app.route('/tambah_nasabah', methods=['POST'])
 def tambah_nasabah():
     nama = request.form['nama'].strip()
+    nik = request.form['nik'].strip()
     tgl_lahir = request.form['tgl_lahir'].strip()
     produk = request.form.getlist('produk')
     keterangan = request.form['keterangan']
 
+    # 🔒 Validasi NIK hanya angka dan panjang 16 digit
+        # VALIDASI NIK
+    if not nik.isdigit() or len(nik) != 16:
+        return render_template('dashboard_karyawan.html',
+                               username=session.get('username'),
+                               hasil_pencarian=[],
+                               rekomendasi_ai=[],
+                               selected_nasabah=None,
+                               show_modal=False,
+                               pencarian_dilakukan=False,
+                               nasabah_not_found=False,
+                               produk_list=produk_list,
+                               error_message="NIK harus terdiri dari 16 digit angka.")
+
+    # VALIDASI NOMOR HP
+    if not no_hp.isdigit():
+        return render_template('dashboard_karyawan.html',
+                               username=session.get('username'),
+                               hasil_pencarian=[],
+                               rekomendasi_ai=[],
+                               selected_nasabah=None,
+                               show_modal=False,
+                               pencarian_dilakukan=False,
+                               nasabah_not_found=False,
+                               produk_list=produk_list,
+                               error_message="Nomor HP harus dimulai dengan 08 dan memiliki 10-13 digit angka.")
+                            
+
+    # CEK DUPLIKASI NIK
+    if any(n['nik'] == nik for n in nasabah_list):
+        return render_template('dashboard_karyawan.html',
+                               username=session.get('username'),
+                               hasil_pencarian=[],
+                               rekomendasi_ai=[],
+                               selected_nasabah=None,
+                               show_modal=False,
+                               pencarian_dilakukan=False,
+                               nasabah_not_found=False,
+                               produk_list=produk_list,
+                               error_message="NIK sudah terdaftar, silakan gunakan NIK lain.")
+        
     nasabah_id = str(uuid.uuid4())[:8]
     new_nasabah = {
         'id': nasabah_id,
         'nama': nama,
+        'nik': nik,
         'tgl_lahir': tgl_lahir,
         'produk': produk,
         'keterangan': keterangan,
@@ -223,10 +386,26 @@ def tambah_referral():
 
 @app.route('/nasabah/<nasabah_id>')
 def profil_nasabah(nasabah_id):
-    if session.get('role') != 'karyawan':
+    
+    show_modal = True
+    role = session.get('role')
+    if role != 'karyawan':
         return redirect(url_for('login'))
+    
     nasabah = next((n for n in nasabah_list if n['id'] == nasabah_id), None)
-    return render_template('profil_nasabah.html', nasabah=nasabah)
+    if nasabah:
+        # ⬇️ Optional masking jika role bukan admin/pic
+        nasabah['no_hp'] = mask_no_hp(nasabah['no_hp'], role)
+        nasabah['alamat'] = mask_alamat(nasabah['alamat'], role)
+        rekomendasi_ai = generate_product_recommendation(nasabah) if nasabah else []
+        
+    else:
+        rekomendasi_ai = []
+    
+    if not nasabah:
+        return redirect(url_for('dashboard_karyawan'))
+   
+    return render_template('profil_nasabah.html', nasabah=nasabah,rekomendasi_ai=rekomendasi_ai,show_modal=show_modal)
 
 @app.route('/logout')
 def logout():

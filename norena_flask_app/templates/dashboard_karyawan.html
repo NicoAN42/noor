@@ -15,7 +15,7 @@
         <input type="text" name="nama" class="form-control" placeholder="Nama Nasabah" required>
       </div>
       <div class="col-md-4">
-        <input type="date" name="tgl_lahir" class="form-control" placeholder="Tanggal Lahir">
+        <input type="text" name="nik"  class="form-control" placeholder="NIK" pattern="\d{16}" inputmode="numeric" maxlength="16">
       </div>
       <div class="col-md-3">
         <button type="submit" class="btn btn-primary w-100">Cari Nasabah</button>
@@ -34,7 +34,7 @@
                   <strong>Tgl Lahir:</strong> {{ nasabah.tgl_lahir }}<br>
                   <strong>No HP:</strong> {{ nasabah.no_hp }}<br>
                   <strong>Alamat:</strong> {{ nasabah.alamat }}<br>
-                  <strong>Produk Dimiliki:</strong>
+                  <!-- <strong>Produk Dimiliki:</strong>
                   {% if nasabah.produk %}
                     <ul>
                       {% for p in nasabah.produk %}
@@ -43,6 +43,14 @@
                     </ul>
                   {% else %}
                     <em>Belum memiliki produk</em>
+                  {% endif %} -->
+                  {% if nasabah.rekomendasi_ai %}
+                      <strong>Rekomendasi Produk:</strong>
+                      <ul>
+                        {% for item in nasabah.rekomendasi_ai %}
+                            <li><strong>{{ item.produk }}</strong>: {{ item.script }}</li>
+                        {% endfor %}
+                        </ul>
                   {% endif %}
                 </p>
                 <a href="{{ url_for('profil_nasabah', nasabah_id=nasabah.id) }}" class="btn btn-outline-primary btn-sm">Lihat Profil</a>
@@ -52,7 +60,6 @@
           </div>
         {% endfor %}
       </div>
-      
     {% elif pencarian_dilakukan %}
       <div class="alert alert-warning mt-4">
         Nasabah tidak ditemukan. <a href="#" data-bs-toggle="modal" data-bs-target="#addNasabahModal">Tambah nasabah baru?</a>
@@ -68,9 +75,16 @@
     </script>
     {% endif %}
 
-    
+    {% if show_modal %}
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        var recommendationModal = new bootstrap.Modal(document.getElementById('recommendationModal'));
+        recommendationModal.show();
+      });
+    </script>
+    {% endif %}
 
-    <!-- Modal Tambah Nasabah Baru -->
+    <!-- Modal Tambah Nasabah -->
     <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="addNasabahModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <form method="POST" action="{{ url_for('tambah_nasabah') }}">
@@ -85,6 +99,11 @@
                 <input type="text" name="nama" class="form-control" required>
               </div>
               <div class="mb-2">
+                <label>NIK</label>
+                <input type="text" name="nik" class="form-control" pattern="\d{16}" inputmode="numeric" maxlength="16" required>
+              </div>
+              
+              <div class="mb-2">
                 <label>Tanggal Lahir</label>
                 <input type="date" name="tgl_lahir" class="form-control" required>
               </div>
@@ -96,7 +115,7 @@
                 <label>Alamat</label>
                 <textarea name="alamat" class="form-control" required></textarea>
               </div>
-              <div class="mb-2">
+              <!-- <div class="mb-2">
                 <label>Produk Dimiliki</label><br>
                 {% for produk in produk_list %}
                   <div class="form-check form-check-inline">
@@ -104,7 +123,7 @@
                     <label class="form-check-label">{{ produk }}</label>
                   </div>
                 {% endfor %}
-              </div>
+              </div> -->
               <div class="mb-2">
                 <label>Produk Direferensikan</label>
                 <select name="produk_direferensikan" class="form-select" required>
@@ -128,6 +147,30 @@
       </div>
     </div>
 
+    <!-- Modal Rekomendasi AI -->
+    {% if rekomendasi_ai %}
+    <div class="modal fade" id="recommendationModal" tabindex="-1" aria-labelledby="recommendationModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title" id="recommendationModalLabel">Rekomendasi Produk AI</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
+          <div class="modal-body">
+            <p>Berikut adalah saran produk berdasarkan analisis AI terhadap data nasabah:</p>
+            <ul>
+                {% for item in rekomendasi_ai %}
+                  <li><strong>{{ item.produk }}</strong>: {{ item.script }}</li>
+                {% endfor %}
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
   </div>
 
