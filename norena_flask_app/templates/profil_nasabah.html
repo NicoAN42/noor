@@ -32,9 +32,9 @@
 
                 <div class="mb-3">
                     <strong>Produk Dimiliki:</strong><br>
-                    {% if nasabah.produk_dimiliki %}
+                    {% if nasabah.produk %}
                         <ul>
-                            {% for produk in nasabah.produk_dimiliki %}
+                            {% for produk in nasabah.produk %}
                                 <li>{{ produk }}</li>
                             {% endfor %}
                         </ul>

@@ -59,6 +59,17 @@
       </div>
     {% endif %}
 
+    {% if nasabah_not_found %}
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        var addModal = new bootstrap.Modal(document.getElementById('addNasabahModal'));
+        addModal.show();
+      });
+    </script>
+    {% endif %}
+
+    
+
     <!-- Modal Tambah Nasabah Baru -->
     <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="addNasabahModalLabel" aria-hidden="true">
       <div class="modal-dialog">
@@ -117,14 +128,6 @@
       </div>
     </div>
 
-    {% if nasabah_not_found %}
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        var addModal = new bootstrap.Modal(document.getElementById('addNasabahModal'));
-        addModal.show();
-      });
-    </script>
-    {% endif %}
 
   </div>
 

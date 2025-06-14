@@ -140,30 +140,38 @@ def dashboard_karyawan():
 
     hasil_pencarian = []
     rekomendasi_ai = []
+    pencarian_dilakukan = False
+    nasabah_not_found = False
     selected_nasabah = None
     show_modal = False
 
     if request.method == 'POST':
-        nama = request.form.get('nama_nasabah', '').strip().lower()
+        nama = request.form.get('nama', '').strip().lower()
         tgl_lahir = request.form.get('tgl_lahir', '').strip()
 
-        hasil_pencarian = [n for n in nasabah_list if nama in n['nama'].lower()]
-        if tgl_lahir:
-            hasil_pencarian = [n for n in hasil_pencarian if n['tgl_lahir'] == tgl_lahir]
+        if nama:  # hanya lakukan pencarian jika nama tidak kosong
+            hasil_pencarian = [n for n in nasabah_list if nama in n['nama'].lower()]
+            if tgl_lahir:
+                hasil_pencarian = [n for n in hasil_pencarian if n['tgl_lahir'] == tgl_lahir]
 
-        if not hasil_pencarian:
-            show_modal = True
-        elif len(hasil_pencarian) == 1:
-            selected_nasabah = hasil_pencarian[0]
-            rekomendasi_ai = generate_product_recommendation(selected_nasabah)
-
+            if not hasil_pencarian:
+                nasabah_not_found = True
+            elif len(hasil_pencarian) == 1:
+                selected_nasabah = hasil_pencarian[0]
+                rekomendasi_ai = generate_product_recommendation(selected_nasabah)
+        else:
+            nasabah_not_found = True  # jika nama kosong
+            
     return render_template(
         'dashboard_karyawan.html',
         username=session.get('username'),
         hasil_pencarian=hasil_pencarian,
         rekomendasi_ai=rekomendasi_ai,
         selected_nasabah=selected_nasabah,
-        show_modal=show_modal
+        show_modal=show_modal,
+        pencarian_dilakukan=pencarian_dilakukan,
+        nasabah_not_found=nasabah_not_found,
+        produk_list=produk_list
     )
 
 @app.route('/tambah_nasabah', methods=['POST'])
