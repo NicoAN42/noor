@@ -6,6 +6,12 @@ from flask import flash, redirect
 from flask import send_file, flash
 from flask import jsonify, request
 import pandas as pd, io, secrets, zipfile
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
+from datetime import datetime
+import uuid
+import pandas as pd
+import io, secrets, zipfile, tempfile, os, re
+import xlsxwriter
 
 
 app = Flask(__name__)
@@ -495,39 +501,99 @@ def pic_edit_nasabah():
     flash('Data nasabah berhasil diperbarui', 'success')
     return ('', 200)
 
+
 @app.route('/pic/export_excel', methods=['POST'])
 def pic_export_excel():
     data = request.get_json()
+    search = data.get('search', '').strip().lower()
+    filter_produk = data.get('filterProduk', '').strip()
+
+    nama_filter = filter_produk if filter_produk else 'semua'
+    safe_nama = re.sub(r'[^\w\-]', '_', nama_filter.strip().lower())
+    excel_filename = f'referral_{safe_nama}.xlsx'
+    password_filename = f'password_{safe_nama}.txt'
+
+    # Buat DataFrame
     df = pd.DataFrame([
-      {**n, 
-       'last_referral_date': (n['referral_histori'][-1]['date'] if n['referral_histori'] else ''),
-       'last_referral_produk': (n['referral_histori'][-1]['product'] if n['referral_histori'] else '')
-      } for n in nasabah_list
+        {
+            'ID': n['id'],
+            'Nama': n['nama'],
+            'NIK': n['nik'],
+            'Tanggal Lahir': n['tgl_lahir'],
+            'No HP': n['no_hp'],
+            'Alamat': n['alamat'],
+            'Produk Dimiliki': ', '.join(n.get('produk', [])),
+            'Keterangan': n.get('keterangan', ''),
+            'Referral Terakhir': n['referral_histori'][-1]['date'] if n['referral_histori'] else '',
+            'Produk Referral Terakhir': n['referral_histori'][-1]['product'] if n['referral_histori'] else ''
+        }
+        for n in nasabah_list
     ])
-    # apply same filter logic
-    if data['search']:
-      df = df[df.apply(lambda row: data['search'].lower() in row['nama'].lower() or data['search'].lower() in row['nik'] or data['search'].lower() in row['alamat'].lower(), axis=1)]
-    if data['filterProduk']:
-      df = df[~df['produk'].apply(lambda arr: data['filterProduk'] in arr)]
 
-    excel_buf = io.BytesIO()
+    # Filter
+    if search:
+        df = df[df.apply(lambda row:
+            search in str(row['Nama']).lower() or
+            search in str(row['NIK']).lower() or
+            search in str(row['Alamat']).lower(), axis=1)]
+
+    if filter_produk:
+        df = df[df['Produk Referral Terakhir'].str.lower() == filter_produk.lower()]
+
+    # Password & Paths
     password = secrets.token_urlsafe(8)
-    writer = pd.ExcelWriter(excel_buf, engine='xlsxwriter', options={'constant_memory':True})
-    df.to_excel(writer, index=False, sheet_name='Nasabah')
-    workbook = writer.book
-    workbook.password = password
-    writer.close()
-    excel_buf.seek(0)
+    tmpdir = tempfile.mkdtemp()
+    excel_path = os.path.join(tmpdir, excel_filename)
+    password_path = os.path.join(tmpdir, password_filename)
 
-    # bundel ZIP dengan password.txt
-    zip_buf = io.BytesIO()
-    with zipfile.ZipFile(zip_buf, 'w') as z:
-        z.writestr('nasabah_export.xlsx', excel_buf.read())
-        z.writestr('password.txt', password)
-    zip_buf.seek(0)
+    # Excel File with Protection
+    workbook = xlsxwriter.Workbook(excel_path)
+    info_sheet = workbook.add_worksheet('Informasi')
+    info_sheet.write('A1', 'Data ini bersifat rahasia')
+    info_sheet.protect(password)
 
-    return send_file(zip_buf, mimetype='application/zip', as_attachment=True, download_name='export_nasabah.zip')
+    data_sheet = workbook.add_worksheet('Data Nasabah')
+    for col_idx, col_name in enumerate(df.columns):
+        data_sheet.write(0, col_idx, col_name)
+    for row_idx, row in enumerate(df.itertuples(index=False), start=1):
+        for col_idx, val in enumerate(row):
+            data_sheet.write(row_idx, col_idx, val)
+    data_sheet.protect(password)
+    data_sheet.hide()
 
+    workbook.close()
+
+    with open(password_path, 'w') as f:
+        f.write(f'Password: {password}')
+
+    # Simpan path ke session agar aman
+    session['export_excel_path'] = excel_path
+    session['export_password_path'] = password_path
+    session['export_excel_name'] = excel_filename
+    session['export_password_name'] = password_filename
+
+    return jsonify({
+        'success': True,
+        'excel_url': url_for('download_export_excel'),
+        'password_url': url_for('download_export_password')
+    })
+
+@app.route('/download/export_excel')
+def download_export_excel():
+    path = session.get('export_excel_path')
+    name = session.get('export_excel_name')
+    if path and os.path.exists(path):
+        return send_file(path, as_attachment=True, download_name=name)
+    return 'File tidak tersedia.', 404
+
+
+@app.route('/download/export_password')
+def download_export_password():
+    path = session.get('export_password_path')
+    name = session.get('export_password_name')
+    if path and os.path.exists(path):
+        return send_file(path, as_attachment=True, download_name=name)
+    return 'File tidak tersedia.', 404
 
 if __name__ == '__main__':
     app.run(debug=True)

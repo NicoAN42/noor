@@ -466,27 +466,45 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // ===== Export Excel =====
-  document.getElementById('btnExport').onclick = async () => {
-    try {
-      const resp = await fetch('/pic/export_excel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          search: document.getElementById('searchNm').value,
-          filterProduk: document.getElementById('filterProduk').value
-        })
-      });
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'nasabah_export.zip';
-      a.click();
-    } catch (err) {
-      alert('Gagal mengekspor data.');
-      console.error(err);
+ document.getElementById('btnExport').onclick = async () => {
+  try {
+    const resp = await fetch('/pic/export_excel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        search: document.getElementById('searchNm').value,
+        filterProduk: document.getElementById('filterProduk').value
+      })
+    });
+
+    const res = await resp.json();
+
+    if (res.success) {
+      // Unduh file Excel terlebih dahulu
+      const a1 = document.createElement('a');
+      a1.href = res.excel_url;
+      a1.download = res.excel_url.split('/').pop(); // Nama file dari backend
+      document.body.appendChild(a1);
+      a1.click();
+      a1.remove();
+
+      // Delay agar tidak bentrok saat membuka 2 file bersamaan
+      setTimeout(() => {
+        const a2 = document.createElement('a');
+        a2.href = res.password_url;
+        a2.download = res.password_url.split('/').pop(); // Nama file dari backend
+        document.body.appendChild(a2);
+        a2.click();
+        a2.remove();
+      }, 800); // Delay 0.8 detik untuk memberi jeda antar unduhan
+    } else {
+      alert('Gagal mengekspor file.');
     }
-  };
+  } catch (err) {
+    console.error('Error saat ekspor:', err);
+    alert('Terjadi kesalahan saat mengekspor file.');
+  }
+};
 
   });
 </script>
