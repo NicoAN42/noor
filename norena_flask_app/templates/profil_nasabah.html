@@ -26,13 +26,14 @@
       border-top-right-radius: 1rem;
     }
 
-    .btn-secondary {
-      border-radius: 0.6rem;
-    }
-
     .list-group-item {
       border: none;
       border-bottom: 1px solid #eee;
+      transition: background-color 0.3s ease;
+    }
+
+    .list-group-item:hover {
+      background-color: #f1f9ff;
     }
 
     .floating-recommendation-btn {
@@ -50,16 +51,31 @@
       display: block;
       opacity: 1;
       transform: translateY(0);
-    }
-
-    .modal-content {
-      border-radius: 1rem;
-      animation: fadeModal 0.4s ease;
+      animation: bounceIn 0.8s;
     }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.9); opacity: 0; }
+      60% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    .tooltip-inner {
+      background-color: #333;
+      color: #fff;
+      font-size: 0.9rem;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .modal-content {
+      border-radius: 1rem;
+      animation: fadeModal 0.4s ease;
     }
 
     @keyframes fadeModal {
@@ -143,8 +159,10 @@
         <p class="mb-3">Berdasarkan data nasabah ini, berikut adalah saran produk dari AI:</p>
         <ul class="list-unstyled">
           {% for item in rekomendasi_ai %}
-          <li class="mb-2">
-            <strong class="text-success">{{ item.produk }}</strong>: {{ item.script }}
+          <li class="mb-3">
+            <div class="border-start border-4 border-success ps-3">
+              <strong class="text-success">{{ item.produk }}</strong>: {{ item.script }}
+            </div>
           </li>
           {% endfor %}
         </ul>
@@ -157,12 +175,12 @@
 </div>
 
 <!-- Tombol Mengambang -->
-<button id="minimizedBtn" class="btn btn-success shadow-lg floating-recommendation-btn">
+<button id="minimizedBtn" class="btn btn-success shadow-lg floating-recommendation-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Klik untuk melihat ulang rekomendasi AI">
   🎯 Rekomendasi AI
 </button>
 {% endif %}
 
-<!-- Show Modal Otomatis dan Floating Button -->
+<!-- Show Modal Otomatis dan Interaksi Tooltip -->
 {% if show_modal and rekomendasi_ai %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -173,6 +191,7 @@
 
     document.getElementById('recommendationModal').addEventListener('hidden.bs.modal', function () {
       button.classList.add('show');
+      var tooltip = new bootstrap.Tooltip(button); // Tooltip aktif saat tombol muncul
     });
 
     button.addEventListener('click', function () {

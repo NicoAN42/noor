@@ -3,6 +3,9 @@ from datetime import datetime
 import uuid
 import re
 from flask import flash, redirect
+from flask import send_file, flash
+from flask import jsonify, request
+import pandas as pd, io, secrets, zipfile
 
 
 app = Flask(__name__)
@@ -110,8 +113,8 @@ nasabah_list = [
         ]
     }
 ]
-produk_list = ["Kartu Kredit", "KPR", "KKB", "Tahapan BCA", "Deposito", "BCA Syariah", "BCA Life"]
-
+produk_list = ["Kartu Kredit", "KPR", "KKB", "Tahapan BCA", "BCA Syariah", "BCA Life","Reksa Dana","Investasi Online","Deposito","Pendidikan Anak","Asuransi Jiwa","Tabungan Rencana","Renovation Loan","Travel insurance","Pensiun Plus","Asuransi Kesehatan"]
+    
 
 
 def mask_no_hp(no_hp, role):
@@ -172,6 +175,8 @@ def generate_product_recommendation(nasabah):
         'pensiun': ['Pensiun Plus', 'Asuransi Kesehatan'],
         'mobile banking': ['Investasi Online', 'Reksa Dana']
     }
+    
+
 
     produk_script = {
         "Kartu Kredit": "Dengan Kartu Kredit ini, Bapak/Ibu bisa menikmati kemudahan bertransaksi harian, mendapatkan promo menarik, dan merasa lebih tenang saat bepergian. Semuanya dalam satu genggaman.",
@@ -225,16 +230,39 @@ def generate_product_recommendation(nasabah):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        user = users.get(username)
-        if user and user['password'] == password:
-            session['username'] = username
+        uname = request.form['username']
+        pwd = request.form['password']
+        user = users.get(uname)
+
+        if user and user['password'] == pwd:
+            session['username'] = uname
             session['role'] = user['role']
-            return redirect(url_for('dashboard_karyawan'))
+
+            if user['role'] == 'karyawan':
+                return redirect(url_for('dashboard_karyawan'))
+            elif user['role'] == 'pic':
+                return redirect(url_for('dashboard_pic'))
+            elif user['role'] == 'admin':
+                return redirect(url_for('dashboard_admin'))
         else:
-            return render_template('login.html', error="Invalid credentials")
+            flash('Username atau password salah', 'danger')
+
     return render_template('login.html')
+
+@app.route('/dashboard/pic', methods=['GET'])
+def dashboard_pic():
+    if session.get('role') != 'pic':
+        return redirect(url_for('login'))
+
+    return render_template(
+        'dashboard_pic.html',
+        username=session.get('username'),
+        nasabah_list=nasabah_list,
+        produk_list=produk_list,
+        show_add_modal = request.args.get('show_add_modal') == '1'
+        
+    )
+
 
 @app.route('/dashboard/karyawan', methods=['GET', 'POST'])
 def dashboard_karyawan():
@@ -298,58 +326,64 @@ def dashboard_karyawan():
 
 @app.route('/tambah_nasabah', methods=['POST'])
 def tambah_nasabah():
-    nama = request.form['nama'].strip()
-    nik = request.form['nik'].strip()
-    no_hp = request.form['no_hp'].strip()
-    alamat = request.form['alamat'].strip()
-    tgl_lahir = request.form['tgl_lahir'].strip()
-    produk = request.form.getlist('produk')
-    keterangan = request.form['keterangan']
+    nama = request.form.get('nama', '').strip()
+    nik = request.form.get('nik', '').strip()
+    no_hp = request.form.get('no_hp', '').strip()
+    alamat = request.form.get('alamat', '').strip()
+    tgl_lahir = request.form.get('tgl_lahir', '').strip()
+    produk_direferensikan = request.form.get('produk_direferensikan', '').strip()
+    keterangan = request.form.get('keterangan', '').strip()
+
     
-    flash('Data nasabah berhasil disimpan!', 'success')  
-    # 🔒 Validasi NIK hanya angka dan panjang 16 digit
-        # VALIDASI NIK
-    if not nik.isdigit() or len(nik) != 16:
-        return render_template('dashboard_karyawan.html',
-                               username=session.get('username'),
-                               hasil_pencarian=[],
-                               rekomendasi_ai=[],
-                               selected_nasabah=None,
-                               show_modal=False,
-                               pencarian_dilakukan=False,
-                               nasabah_not_found=False,
-                               produk_list=produk_list,
-                               error_message="NIK harus terdiri dari 16 digit angka.")
+    # Helper untuk kirim ulang form saat gagal
+    def return_with_error(msg):
+        flash(msg, "danger")
+        return render_template(
+            'dashboard_pic.html',
+            username=session.get('username'),
+            nasabah_list=nasabah_list,
+            produk_list=produk_list,
+            show_add_modal=True,
+            form_data={
+                'nama': nama,
+                'nik': nik,
+                'no_hp': no_hp,
+                'alamat': alamat,
+                'tgl_lahir': tgl_lahir,
+                'produk_direferensikan': produk_direferensikan,
+                'keterangan': keterangan
+            }
+        )
 
-    # VALIDASI NOMOR HP
-    if not no_hp.isdigit():
-        return render_template('dashboard_karyawan.html',
-                               username=session.get('username'),
-                               hasil_pencarian=[],
-                               rekomendasi_ai=[],
-                               selected_nasabah=None,
-                               show_modal=False,
-                               pencarian_dilakukan=False,
-                               nasabah_not_found=False,
-                               produk_list=produk_list,
-                               error_message="Nomor HP harus dimulai dengan 08 dan memiliki 10-13 digit angka.")
-                            
+    # Validasi Nama
+    if not nama:
+        return return_with_error("Nama wajib diisi.")
 
-    # CEK DUPLIKASI NIK
+    # Validasi NIK
+    if not nik or not nik.isdigit() or len(nik) != 16:
+        return return_with_error("NIK harus terdiri dari 16 digit angka.")
     if any(n['nik'] == nik for n in nasabah_list):
-        return render_template('dashboard_karyawan.html',
-                               username=session.get('username'),
-                               hasil_pencarian=[],
-                               rekomendasi_ai=[],
-                               selected_nasabah=None,
-                               show_modal=False,
-                               pencarian_dilakukan=False,
-                               nasabah_not_found=False,
-                               produk_list=produk_list,
-                               error_message="NIK sudah terdaftar, silakan gunakan NIK lain.")
-        
-    
-        
+        return return_with_error("NIK sudah terdaftar, silakan gunakan NIK lain.")
+
+    # Validasi Tanggal Lahir
+    try:
+        datetime.strptime(tgl_lahir, '%Y-%m-%d')
+    except ValueError:
+        return return_with_error("Format tanggal lahir tidak valid. Gunakan format YYYY-MM-DD.")
+
+    # Validasi Nomor HP
+    if not no_hp.startswith('08') or not no_hp.isdigit() or not (10 <= len(no_hp) <= 13):
+        return return_with_error("Nomor HP harus dimulai dengan 08 dan memiliki 10-13 digit angka.")
+
+    # Validasi Alamat
+    if not alamat:
+        return return_with_error("Alamat wajib diisi.")
+
+    # Validasi Produk Direferensikan
+    if not produk_direferensikan:
+        return return_with_error("Produk yang direferensikan wajib dipilih.")
+
+    # Simpan Nasabah Baru
     nasabah_id = str(uuid.uuid4())[:8]
     new_nasabah = {
         'id': nasabah_id,
@@ -358,27 +392,19 @@ def tambah_nasabah():
         'no_hp': no_hp,
         'alamat': alamat,
         'tgl_lahir': tgl_lahir,
-        'produk': produk,
+        'produk': [],  # ⛔ Tidak diisi dari produk direferensikan
         'keterangan': keterangan,
-        'referral_histori': []
+        'referral_histori': [{
+            'product': produk_direferensikan,
+            'description': keterangan,
+            'date': datetime.now().strftime('%Y-%m-%d')
+        }]
     }
-    
 
     nasabah_list.append(new_nasabah)
+    flash("Nasabah baru berhasil ditambahkan.", "success")
+    return redirect(url_for('dashboard_pic'))
 
-    if 'referral_produk' in request.form and request.form['referral_produk']:
-        produk = request.form['referral_produk']
-        ref_ket = request.form['referral_keterangan']
-        new_nasabah['referral_histori'].append({
-            'produk': produk,
-            'keterangan': ref_ket,
-            'tanggal': datetime.now().strftime('%Y-%m-%d')
-        })
-        
-        
-    # Simpan nasabah...
-   
-    return redirect(url_for('dashboard_karyawan'))
 
 @app.route('/tambah_referral', methods=['POST'])
 def tambah_referral():
@@ -394,8 +420,8 @@ def tambah_referral():
                 'tanggal': datetime.now().strftime('%Y-%m-%d')
             })
             break
-
-    return redirect(url_for('dashboard_karyawan'))
+    return redirect(url_for('dashboard_pic', show_add_modal=1))
+    # return redirect(url_for('dashboard_pic'))
 
 @app.route('/nasabah/<nasabah_id>')
 def profil_nasabah(nasabah_id):
@@ -420,10 +446,88 @@ def profil_nasabah(nasabah_id):
    
     return render_template('profil_nasabah.html', nasabah=nasabah,rekomendasi_ai=rekomendasi_ai,show_modal=show_modal)
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET'])
 def logout():
     session.clear()
+    # flash("Anda telah logout.", "success")
     return redirect(url_for('login'))
+
+
+@app.route('/validate-username')
+def validate_username():
+    username = request.args.get('username', '').strip()
+
+    # Simulasi validasi: ganti logika ini sesuai kebutuhan database kamu
+    valid_usernames = ['admin1', 'karyawan1', 'pic1']  # Contoh dummy data
+
+    is_valid = username in valid_usernames
+
+    return jsonify({'valid': is_valid})
+
+@app.route('/pic/get_nasabah')
+def pic_get_nasabah():
+    nid = request.args.get('id')
+    n = next((x for x in nasabah_list if x['id'] == nid), None)
+    if n:
+        n['rekomendasi_ai'] = generate_product_recommendation(n)
+    return jsonify(n or {})
+
+@app.route('/pic/edit_nasabah', methods=['POST'])
+def pic_edit_nasabah():
+    nid = request.form.get('id')
+    if not nid:
+        return jsonify({'error': 'ID nasabah tidak ditemukan'}), 400
+
+    # Temukan nasabah dari list
+    n = next((x for x in nasabah_list if x['id'] == nid), None)
+    if not n:
+        return jsonify({'error': 'Nasabah tidak ditemukan'}), 404
+
+    # Update field umum
+    for f in ('nama', 'nik', 'tgl_lahir', 'no_hp', 'alamat', 'keterangan'):
+        if f in request.form:
+            n[f] = request.form[f]
+
+    # Ambil list produk yang dicentang (checkbox)
+    produk_dimiliki = request.form.getlist('produk')  # <-- ini penting!
+    n['produk'] = produk_dimiliki  # update ke field produk
+
+    flash('Data nasabah berhasil diperbarui', 'success')
+    return ('', 200)
+
+@app.route('/pic/export_excel', methods=['POST'])
+def pic_export_excel():
+    data = request.get_json()
+    df = pd.DataFrame([
+      {**n, 
+       'last_referral_date': (n['referral_histori'][-1]['date'] if n['referral_histori'] else ''),
+       'last_referral_produk': (n['referral_histori'][-1]['product'] if n['referral_histori'] else '')
+      } for n in nasabah_list
+    ])
+    # apply same filter logic
+    if data['search']:
+      df = df[df.apply(lambda row: data['search'].lower() in row['nama'].lower() or data['search'].lower() in row['nik'] or data['search'].lower() in row['alamat'].lower(), axis=1)]
+    if data['filterProduk']:
+      df = df[~df['produk'].apply(lambda arr: data['filterProduk'] in arr)]
+
+    excel_buf = io.BytesIO()
+    password = secrets.token_urlsafe(8)
+    writer = pd.ExcelWriter(excel_buf, engine='xlsxwriter', options={'constant_memory':True})
+    df.to_excel(writer, index=False, sheet_name='Nasabah')
+    workbook = writer.book
+    workbook.password = password
+    writer.close()
+    excel_buf.seek(0)
+
+    # bundel ZIP dengan password.txt
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, 'w') as z:
+        z.writestr('nasabah_export.xlsx', excel_buf.read())
+        z.writestr('password.txt', password)
+    zip_buf.seek(0)
+
+    return send_file(zip_buf, mimetype='application/zip', as_attachment=True, download_name='export_nasabah.zip')
+
 
 if __name__ == '__main__':
     app.run(debug=True)

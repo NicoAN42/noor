@@ -3,45 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Karyawan</title>
+  <title>Dashboard Karyawan - NORENA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <style>
     body {
       background: linear-gradient(to bottom right, #e9f1ff, #ffffff);
       font-family: 'Segoe UI', 'Poppins', sans-serif;
-      color: #333;
     }
 
-    h2 {
-      font-weight: 600;
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
     }
 
-    .form-control, .form-select {
-      border-radius: 0.6rem;
-    }
-
-    .form-control:focus, .form-select:focus {
-      border-color: #0d6efd;
-      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
-    }
-
-    .btn-primary {
-      border-radius: 0.6rem;
-      font-weight: 500;
+    .logout-btn {
+      border-radius: 0.5rem;
     }
 
     .card {
-      transition: all 0.4s ease-in-out;
       border-radius: 1rem;
+      transition: all 0.4s ease-in-out;
       opacity: 0;
       transform: translateY(10px);
       animation: fadeInUp 0.6s ease forwards;
     }
 
-    .card:nth-child(1) { animation-delay: 0.1s; }
-    .card:nth-child(2) { animation-delay: 0.2s; }
-    .card:nth-child(3) { animation-delay: 0.3s; }
+    .card:nth-child(n) {
+      animation-delay: 0.1s;
+    }
 
     @keyframes fadeInUp {
       to {
@@ -50,193 +42,200 @@
       }
     }
 
-    .modal-content {
-      border-radius: 1rem;
-      animation: fadeModal 0.4s ease;
-    }
-
-    @keyframes fadeModal {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
+    @media (max-width: 768px) {
+      .header-bar {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
 
-    .toast-container {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 9999;
+    .tooltip-inner {
+      max-width: 260px;
+      font-size: 0.85rem;
     }
 
-    .toast {
-      border-radius: 0.75rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      animation: fadeIn 0.5s ease;
+    .btn-outline-info, .btn-outline-secondary {
+      white-space: nowrap;
     }
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .fade-section {
+      transition: opacity 0.5s ease, max-height 0.5s ease;
+      overflow: hidden;
+    }
+
+    .fade-hidden {
+      opacity: 0;
+      max-height: 0;
+      pointer-events: none;
+    }
+
+    .fade-shown {
+      opacity: 1;
+      max-height: 2000px;
     }
   </style>
 </head>
 <body>
-  <div class="container py-5">
-    <h2 class="mb-4 text-primary"><i class="bi bi-people-fill me-2"></i>Dashboard Karyawan</h2>
+  <div class="container py-4">
+    <div class="header-bar">
+      <h2 class="text-primary"><i class="bi bi-people-fill me-2"></i>Halaman Referral</h2>
+      <a href="{{ url_for('logout') }}" class="btn btn-outline-danger logout-btn"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+    </div>
 
-    <!-- Toast Notification -->
-    <div class="toast-container">
+    <!-- Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
       {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-          <div class="toast align-items-center text-white bg-{{ category }} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-              <div class="toast-body">
-                {{ message }}
-              </div>
-              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
+        {% for category, message in messages %}
+        <div class="toast show text-bg-{{ category }} border-0" role="alert">
+          <div class="d-flex">
+            <div class="toast-body">{{ message }}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
           </div>
-          {% endfor %}
-        {% endif %}
+        </div>
+        {% endfor %}
       {% endwith %}
     </div>
 
-    <!-- Form Cari -->
-    <form method="POST" class="row g-3 mb-5">
-      <div class="col-md-5">
-        <input type="text" name="nama" class="form-control shadow-sm" placeholder="Nama Nasabah" required />
-      </div>
+    <!-- Form Pencarian -->
+    <form method="POST" class="row g-3 mb-4 align-items-end" onsubmit="showResults();">
       <div class="col-md-4">
-        <input type="text" name="nik" class="form-control shadow-sm" placeholder="NIK (16 digit)" pattern="\d{16}" inputmode="numeric" maxlength="16" />
+        <input type="text" name="nama" id="namaInput" class="form-control shadow-sm" placeholder="Nama Nasabah" required>
       </div>
       <div class="col-md-3">
-        <button type="submit" class="btn btn-primary w-100 shadow-sm"><i class="bi bi-search me-1"></i> Cari Nasabah</button>
+        <input type="text" name="nik" id="nikInput" class="form-control shadow-sm" placeholder="NIK (16 digit)" maxlength="16">
+      </div>
+      <div class="col-md-5 d-flex gap-2">
+        <button type="submit" class="btn btn-primary shadow-sm w-100">
+          <i class="bi bi-search me-1"></i> Cari
+        </button>
+        <button type="button" class="btn btn-outline-secondary shadow-sm" onclick="resetForm()">
+          <i class="bi bi-x-circle"></i> Reset
+        </button>
+        <button type="button" class="btn btn-outline-info shadow-sm" onclick="refreshPage()">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
       </div>
     </form>
 
-    <!-- Hasil Pencarian -->
-    {% if hasil_pencarian %}
-    <h4 class="text-secondary mb-3">Hasil Pencarian Nasabah:</h4>
-    <div class="row">
-      {% for nasabah in hasil_pencarian %}
-      <div class="col-md-4 mb-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <h5 class="card-title text-primary">{{ nasabah.nama }}</h5>
-            <p class="card-text small text-muted"><i class="bi bi-calendar-event"></i> {{ nasabah.tgl_lahir }}</p>
-            <p class="card-text"><strong>NIK:</strong><br>{{ nasabah.nik }}</p>
-            <p class="card-text"><strong>HP:</strong><br>{{ nasabah.no_hp }}</p>
-            <p class="card-text"><strong>Alamat:</strong><br>{{ nasabah.alamat }}</p>
-            {% if nasabah.rekomendasi_ai %}
-            <div class="small mt-3">
-              <strong class="text-success">Rekomendasi Produk:</strong>
-              <ul>
-                {% for item in nasabah.rekomendasi_ai %}
-                <li><strong>{{ item.produk }}</strong>: {{ item.script }}</li>
-                {% endfor %}
-              </ul>
-            </div>
-            {% endif %}
-            <div class="mt-3 d-flex justify-content-between">
-              <a href="{{ url_for('profil_nasabah', nasabah_id=nasabah.id) }}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-person-lines-fill"></i> Profil
-              </a>
-              <a href="{{ url_for('tambah_referral', nasabah_id=nasabah.id) }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-circle"></i> Referral
-              </a>
+    <!-- Container hasil dan riwayat -->
+    <div id="resultSection" class="fade-section {% if not hasil_pencarian and not pencarian_dilakukan %}fade-hidden{% else %}fade-shown{% endif %}">
+      
+      <!-- Riwayat -->
+      {% if riwayat_pencarian %}
+      <div class="mb-4">
+        <h5 class="text-secondary">Riwayat Pencarian:</h5>
+        <ul class="list-group list-group-flush">
+          {% for item in riwayat_pencarian %}
+          <li class="list-group-item small d-flex justify-content-between">
+            <span><i class="bi bi-clock-history me-2"></i>{{ item.nama }} - {{ item.nik }}</span>
+            <a href="{{ url_for('cari_nasabah', nama=item.nama, nik=item.nik) }}" class="btn btn-sm btn-outline-secondary">Cari Ulang</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <!-- Hasil -->
+      {% if hasil_pencarian %}
+      <h5 class="text-secondary mb-3">Hasil Pencarian:</h5>
+      <div class="row">
+        {% for nasabah in hasil_pencarian %}
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <h5 class="text-primary">{{ nasabah.nama }}</h5>
+              <p class="mb-1 small"><i class="bi bi-calendar-event"></i> {{ nasabah.tgl_lahir }}</p>
+              <p class="mb-1"><strong>NIK:</strong><br>{{ nasabah.nik }}</p>
+              <p class="mb-1"><strong>No HP:</strong><br>{{ nasabah.no_hp }}</p>
+              <p class="mb-2"><strong>Alamat:</strong><br>{{ nasabah.alamat }}</p>
+
+              {% if nasabah.rekomendasi_ai %}
+              <div class="mb-3">
+                <strong class="text-success">Rekomendasi AI:</strong>
+                <ul class="small">
+                  {% for r in nasabah.rekomendasi_ai %}
+                  <li data-bs-toggle="tooltip" data-bs-placement="top" title="{{ r.script }}">
+                    <i class="bi bi-stars text-warning"></i> <strong>{{ r.produk }}</strong>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+
+              <div class="d-flex justify-content-between">
+                <a href="{{ url_for('profil_nasabah', nasabah_id=nasabah.id) }}" class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-person-lines-fill"></i> Profil
+                </a>
+                <a href="{{ url_for('tambah_referral', nasabah_id=nasabah.id) }}" class="btn btn-primary btn-sm">
+                  <i class="bi bi-plus-circle"></i> Referral
+                </a>
+              </div>
             </div>
           </div>
         </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      {% elif pencarian_dilakukan %}
+      <div class="alert alert-warning mt-3">
+        Nasabah tidak ditemukan. <a href="#" data-bs-toggle="modal" data-bs-target="#">Hubungi PIC Referral untuk menambahkan data nasabah.</a>
+      </div>
+      {% endif %}
     </div>
-    {% elif pencarian_dilakukan %}
-    <div class="alert alert-warning">
-      Nasabah tidak ditemukan. <a href="#" data-bs-toggle="modal" data-bs-target="#addNasabahModal" class="text-decoration-underline">Tambah nasabah baru?</a>
-    </div>
-    {% endif %}
-
-    {% if nasabah_not_found %}
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        new bootstrap.Modal(document.getElementById('addNasabahModal')).show();
-      });
-    </script>
-    {% endif %}
 
     <!-- Modal Tambah Nasabah -->
-    <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="addNasabahModalLabel" aria-hidden="true">
+    <!-- <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <form method="POST" action="{{ url_for('tambah_nasabah') }}">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title" id="addNasabahModalLabel"><i class="bi bi-person-plus-fill me-2"></i>Tambah Nasabah & Referral</h5>
+              <h5 class="modal-title" id="modalLabel"><i class="bi bi-person-plus me-2"></i>Tambah Nasabah</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3">
-                <label>Nama</label>
-                <input type="text" name="nama" class="form-control" required />
-              </div>
-              <div class="mb-3">
-                <label>NIK</label>
-                <input type="text" name="nik" class="form-control" pattern="\d{16}" inputmode="numeric" maxlength="16" required />
-              </div>
-              <div class="mb-3">
-                <label>Tanggal Lahir</label>
-                <input type="date" name="tgl_lahir" class="form-control" required />
-              </div>
-              <div class="mb-3">
-                <label>No HP</label>
-                <input type="text" name="no_hp" class="form-control" required />
-              </div>
-              <div class="mb-3">
-                <label>Alamat</label>
-                <textarea name="alamat" class="form-control" required></textarea>
-              </div>
-              <div class="mb-3">
-                <label>Produk Direferensikan</label>
+              <div class="mb-3"><label>Nama</label><input name="nama" class="form-control" required></div>
+              <div class="mb-3"><label>NIK</label><input name="nik" class="form-control" maxlength="16" required></div>
+              <div class="mb-3"><label>Tgl Lahir</label><input type="date" name="tgl_lahir" class="form-control" required></div>
+              <div class="mb-3"><label>No HP</label><input name="no_hp" class="form-control" required></div>
+              <div class="mb-3"><label>Alamat</label><textarea name="alamat" class="form-control" required></textarea></div>
+              <div class="mb-3"><label>Produk</label>
                 <select name="produk_direferensikan" class="form-select" required>
                   <option value="">-- Pilih Produk --</option>
-                  {% for produk in produk_list %}
-                  <option value="{{ produk }}">{{ produk }}</option>
-                  {% endfor %}
+                  {% for p in produk_list %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
                 </select>
               </div>
-              <div class="mb-3">
-                <label>Keterangan Referral</label>
-                <textarea name="keterangan" class="form-control" required></textarea>
-              </div>
+              <div class="mb-3"><label>Keterangan</label><textarea name="keterangan" class="form-control"></textarea></div>
             </div>
             <div class="modal-footer">
-              <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Simpan</button>
+              <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Simpan</button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
             </div>
           </div>
         </form>
       </div>
     </div>
-  </div>
+  </div> -->
 
-  <!-- Bootstrap JS -->
+  <!-- Bootstrap JS + Tooltip -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-  document.querySelectorAll('.toast').forEach(toastEl => {
-    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-    toast.show();
-  });
-</script>
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+
+    function resetForm() {
+      document.getElementById("namaInput").value = "";
+      document.getElementById("nikInput").value = "";
+      document.getElementById("resultSection").classList.remove('fade-shown');
+      document.getElementById("resultSection").classList.add('fade-hidden');
+    }
+
+    function refreshPage() {
+      window.location.reload();
+    }
+
+    function showResults() {
+      document.getElementById("resultSection").classList.remove('fade-hidden');
+      document.getElementById("resultSection").classList.add('fade-shown');
+    }
+  </script>
 </body>
 </html>
