@@ -134,14 +134,10 @@
       </div>
        <div class="col-md-2">
           <select id="filterProduk" class="form-select">
-            <option value="">Produk Referral</option>
-            {% set produk_terakhir = [] %}
-            {% for n in nasabah_list %}
-              {% if n.referral_histori and n.referral_histori[-1].product not in produk_terakhir %}
-                {% set _ = produk_terakhir.append(n.referral_histori[-1].product) %}
-                <option value="{{ n.referral_histori[-1].product }}">{{ n.referral_histori[-1].product }}</option>
-              {% endif %}
-            {% endfor %}
+            <option value="">Produk Referral</option> {% set unique_produk = [] %} {% for r in referral_list %}
+            {% if r.referral_produk and r.referral_produk not in unique_produk %}
+            {% set _ = unique_produk.append(r.referral_produk) %} <option value="{{ r.referral_produk }}">
+              {{ r.referral_produk }}</option> {% endif %} {% endfor %}
           </select>
         </div>
         <div class="col-md-2">
@@ -159,36 +155,41 @@
     </div>
 
     <div class="table-responsive">
-      <table class="table table-hover align-middle bg-white shadow-sm" id="tblNasabah">
+      <table class="table table-hover align-middle bg-white shadow-sm" id="tblReferral">
         <thead>
-          <tr>
-            <th>Nama</th><th>NIK</th><th>Alamat</th><th>Keterangan</th><th>Referral Terakhir</th><th>Produk Referral</th><th>Aksi</th>
+          <tr class="text-center">
+            <th>Nama</th>
+            <th>NIK</th>
+            <th>Alamat</th>
+            <!-- <th>Produk Dimiliki</th> -->
+            <th>Informasi</th>
+            <th>Tanggal Referral</th>
+            <th>Produk Referral</th>
+            <!-- <th>Deskripsi</th> -->
+            <th>Aksi</th>
           </tr>
         </thead>
-        <tbody>
-          {% for n in nasabah_list %}
-          <tr 
-            data-last-product="{{ n.referral_histori[-1].product if n.referral_histori else '' }}"
-            data-last-date="{{ n.referral_histori[-1].date if n.referral_histori else '' }}">
-            <td>{{ n.nama }}</td>
-            <td>{{ n.nik }}</td>
-            <td>{{ n.alamat }}</td>
-            <td>{{ n.keterangan }}</td>
-            <td>{{ n.referral_histori[-1].date if n.referral_histori else '-' }}</td>
-            <td>{{ n.referral_histori[-1].product if n.referral_histori else '-' }}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary btnView me-1" data-id="{{ n.id }}">
-                <i class="bi bi-eye"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-warning btnEdit" data-id="{{ n.id }}">
-                <i class="bi bi-pencil"></i>
-              </button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
+        <tbody> {% if referral_list %} {% for r in referral_list %} <tr data-last-product="{{ r.referral_produk }}"
+            data-last-date="{{ r.referral_tanggal }}">
+            <td>{{ r.nama }}</td>
+            <td>{{ r.nik }}</td>
+            <td>{{ r.alamat }}</td>
+            <!-- <td>{{ r.produk_dimiliki }}</td> -->
+            <td>{{ r.keterangan or '-' }}</td>
+            <td>{{ r.referral_tanggal }}</td>
+            <td>{{ r.referral_produk }}</td>
+            <!-- <td>{{ r.referral_deskripsi or '-' }}</td> -->
+            <td class="text-center"> <button class="btn btn-sm btn-outline-primary btnView me-1" data-id="{{ r.id }}"> <i
+                  class="bi bi-eye"></i> </button> <button class="btn btn-sm btn-outline-warning btnEdit"
+                data-id="{{ r.id }}"> <i class="bi bi-pencil"></i> </button> </td>
+          </tr> {% endfor %} {% else %} <tr>
+            <td colspan="9" class="text-center text-muted py-3"> <em>Tidak ada data referral yang tersedia.</em> </td>
+          </tr> {% endif %} </tbody>
       </table>
     </div>
+    </div>
+
+   
 
      <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
       <div class="modal-dialog">
@@ -452,8 +453,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
 
+  
   // ===== Table Filter Logic =====
-  const rows = Array.from(document.querySelectorAll('#tblNasabah tbody tr'));
+  const rows = Array.from(document.querySelectorAll('#tblReferral tbody tr'));
   document.getElementById('searchNm').oninput = applyFilter;
   document.getElementById('filterProduk').onchange = applyFilter;
   document.getElementById('filterTanggal').onchange = applyFilter;

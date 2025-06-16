@@ -12,6 +12,18 @@ import uuid
 import pandas as pd
 import io, secrets, zipfile, tempfile, os, re
 import xlsxwriter
+from flask import request, jsonify, session, url_for, send_file
+import pandas as pd
+import tempfile
+import os
+import secrets
+import xlsxwriter
+import re
+from flask import Flask, request, session, jsonify, send_file, url_for
+import pandas as pd
+import tempfile, os, secrets, xlsxwriter, re
+from datetime import datetime
+
 
 
 app = Flask(__name__)
@@ -260,32 +272,32 @@ def dashboard_pic():
     if session.get('role') != 'pic':
         return redirect(url_for('login'))
 
-    role = session.get('role')
+    referral_data = []
 
-    # Untuk PIC, tampilkan data tanpa masking
-    # (jika ingin masking, logika bisa disesuaikan di bawah)
-    masked_nasabah_list = []
-    for n in nasabah_list:
-        masked_nasabah_list.append({
-            'id': n['id'],
-            'nama': n['nama'],
-            'nik': n['nik'],
-            'tgl_lahir': n['tgl_lahir'],
-            'no_hp': n['no_hp'],  # Unmasked
-            'alamat': n['alamat'],  # Unmasked
-            'produk': n.get('produk', []),
-            'keterangan': n.get('keterangan', ''),
-            'referral_histori': n.get('referral_histori', [])
-        })
+    for nasabah in nasabah_list:
+        for r in nasabah.get('referral_histori', []):
+            referral_data.append({
+                'id': nasabah['id'],
+                'nama': nasabah['nama'],
+                'nik': nasabah['nik'],
+                'tgl_lahir': nasabah.get('tgl_lahir', ''),
+                'no_hp': nasabah.get('no_hp', ''),
+                'alamat': nasabah.get('alamat', ''),
+                'produk_dimiliki': ', '.join(nasabah.get('produk', [])),
+                'keterangan': nasabah.get('keterangan', ''),
+                'referral_tanggal': r.get('date', ''),
+                'referral_produk': r.get('product', ''),
+                'referral_deskripsi': r.get('description', '')
+            })
 
     return render_template(
         'dashboard_pic.html',
         username=session.get('username'),
-        nasabah_list=masked_nasabah_list,
+        referral_list=referral_data,
         produk_list=produk_list,
         show_add_modal=request.args.get('show_add_modal') == '1'
     )
-
+    
 @app.route('/dashboard/karyawan', methods=['GET', 'POST'])
 def dashboard_karyawan():
     if session.get('role') != 'karyawan':
@@ -528,59 +540,74 @@ def pic_edit_nasabah():
 
 @app.route('/pic/export_excel', methods=['POST'])
 def pic_export_excel():
-    import tempfile, os
     data = request.get_json()
     search = data.get('search', '').strip().lower()
-    filter_produk = data.get('filterProduk', '').strip()
+    filter_produk = data.get('filterProduk', '').strip().lower()
     filter_tanggal = data.get('filterTanggal', '').strip()
-
-    # Nama file berdasarkan filter
+    
+   # Siapkan nama file berdasarkan filter
     nama_filter = f"{filter_produk or 'semua'}_{filter_tanggal or 'semua'}"
-    safe_nama = re.sub(r'[^\w\-]', '_', nama_filter.strip().lower())
-    excel_filename = f'referral_{safe_nama}.xlsx'
-    password_filename = f'password_{safe_nama}.txt'
+    safe_nama = re.sub(r'[^\w\-]', '_', nama_filter)
+    excel_filename = f"referral_{safe_nama}.xlsx"
+    password_filename = f"password_{safe_nama}.txt"
 
-    # Buat DataFrame dari nasabah_list
-    df = pd.DataFrame([
-        {
-            'ID': n['id'],
-            'Nama': n['nama'],
-            'NIK': n['nik'],
-            'Tanggal Lahir': n['tgl_lahir'],
-            'No HP': n['no_hp'],
-            'Alamat': n['alamat'],
-            'Produk Dimiliki': ', '.join(n.get('produk', [])),
-            'Keterangan': n.get('keterangan', ''),
-            'Referral Terakhir': n['referral_histori'][-1]['date'] if n['referral_histori'] else '',
-            'Produk Referral Terakhir': n['referral_histori'][-1]['product'] if n['referral_histori'] else ''
-        }
-        for n in nasabah_list
-    ])
+    # Ambil semua data referral
+    referral_data = []
+    for n in nasabah_list:
+        for r in n.get('referral_histori', []):
+            referral_data.append({
+                'ID': n['id'],
+                'Nama': n['nama'],
+                'NIK': n['nik'],
+                'Tanggal Lahir': n.get('tgl_lahir', ''),
+                'No HP': n.get('no_hp', ''),
+                'Alamat': n.get('alamat', ''),
+                'Produk Dimiliki': ', '.join(n.get('produk', [])),
+                'Keterangan': n.get('keterangan', ''),
+                'Tanggal Referral': r.get('date', ''),
+                'Produk Referral': r.get('product', ''),
+                'Deskripsi Referral': r.get('description', '')
+            })
 
-    # Filter pencarian (nama, nik, alamat)
-    if search:
-        df = df[df.apply(lambda row:
-            search in str(row['Nama']).lower() or
-            search in str(row['NIK']).lower() or
-            search in str(row['Alamat']).lower(),
-            axis=1
-        )]
+    df = pd.DataFrame(referral_data)
 
-    # Filter produk/tanggal: logika OR (salah satu cocok)
-    if filter_produk or filter_tanggal:
-        df = df[df.apply(lambda row:
-            (filter_produk and row['Produk Referral Terakhir'].lower() == filter_produk.lower()) or
-            (filter_tanggal and row['Referral Terakhir'] == filter_tanggal),
-            axis=1
-        )]
+    # Terapkan filter pencarian dan filter produk/tanggal
+    def match_filter(row):
+        nama = str(row.get('Nama', '')).lower()
+        nik = str(row.get('NIK', '')).lower()
+        alamat = str(row.get('Alamat', '')).lower()
+        produk_ref = str(row.get('Produk Referral', '')).lower()
+        tanggal_ref = str(row.get('Tanggal Referral', ''))
+        
+        match_search = (
+            not search or
+            search in nama or
+            search in nik or
+            search in alamat
+        )
 
-    # ===== Buat Excel File dengan 2 Sheet dan Proteksi =====
+        match_produk = not filter_produk or produk_ref == filter_produk
+        match_tanggal = not filter_tanggal or tanggal_ref == filter_tanggal
+
+        # Aturan kombinasi filter:
+        if filter_produk and filter_tanggal:
+            return match_search and match_produk and match_tanggal
+        elif filter_produk:
+            return match_search and match_produk
+        elif filter_tanggal:
+            return match_search and match_tanggal
+        else:
+            return match_search
+
+    df = df[df.apply(match_filter, axis=1)]
+    
+
+    # Buat file Excel sementara dengan proteksi
     password = secrets.token_urlsafe(8)
     tmpdir = tempfile.mkdtemp()
     excel_path = os.path.join(tmpdir, excel_filename)
     password_path = os.path.join(tmpdir, password_filename)
 
-    import xlsxwriter
     workbook = xlsxwriter.Workbook(excel_path)
 
     # Sheet 1: Informasi
@@ -592,13 +619,11 @@ def pic_export_excel():
     data_sheet = workbook.add_worksheet('Data Nasabah')
     for col_idx, col_name in enumerate(df.columns):
         data_sheet.write(0, col_idx, col_name)
-
     for row_idx, row in enumerate(df.itertuples(index=False), start=1):
         for col_idx, val in enumerate(row):
             data_sheet.write(row_idx, col_idx, val)
-
     data_sheet.protect(password)
-    data_sheet.hide()  # disembunyikan
+    data_sheet.hide()
 
     workbook.close()
 
@@ -606,7 +631,7 @@ def pic_export_excel():
     with open(password_path, 'w') as f:
         f.write(f'Password: {password}')
 
-    # Simpan path ke session
+    # Simpan path ke session untuk endpoint download
     session['export_excel_path'] = excel_path
     session['export_password_path'] = password_path
     session['export_excel_name'] = excel_filename
@@ -636,4 +661,4 @@ def download_export_password():
     return 'File tidak tersedia.', 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
