@@ -75,7 +75,7 @@
     }
   </style>
 </head>
-<body>
+<body data-show-add="{{ '1' if show_add_modal else '0' }}">
   <div class="container py-4">
     <div class="header-bar">
       <h2 class="text-primary"><i class="bi bi-people-fill me-2"></i>Halaman Referral</h2>
@@ -166,9 +166,9 @@
                 <a href="{{ url_for('profil_nasabah', nasabah_id=nasabah.id) }}" class="btn btn-outline-primary btn-sm">
                   <i class="bi bi-person-lines-fill"></i> Profil
                 </a>
-                <a href="{{ url_for('tambah_referral', nasabah_id=nasabah.id) }}" class="btn btn-primary btn-sm">
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahReferral" onclick="isiFormReferral('{{ nasabah.id }}', '{{ nasabah.nama }}', '{{ nasabah.nik }}')">
                   <i class="bi bi-plus-circle"></i> Referral
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -177,13 +177,53 @@
       </div>
       {% elif pencarian_dilakukan %}
       <div class="alert alert-warning mt-3">
-        Nasabah tidak ditemukan. <a href="#" data-bs-toggle="modal" data-bs-target="#">Hubungi PIC Referral untuk menambahkan data nasabah.</a>
+        Nasabah tidak ditemukan. <a href="#" data-bs-toggle="modal" data-bs-target="#addNasabahModal">Request Referral Nasabah Baru.</a>
       </div>
       {% endif %}
     </div>
 
-    <!-- Modal Tambah Nasabah -->
-    <!-- <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+<div class="modal fade" id="modalTambahReferral" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('tambah_referral') }}">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Tambah Referral Produk</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="nasabah_id" id="refNasabahId">
+          <div class="mb-3">
+            <label class="form-label">Nama</label>
+            <input type="text" class="form-control" id="refNama" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">NIK</label>
+            <input type="text" class="form-control" id="refNIK" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Produk Direferensikan</label>
+            <select name="produk" class="form-select" required>
+              <option value="">-- Pilih Produk --</option>
+              {% for p in produk_list %}
+              <option value="{{ p }}">{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Informasi Pendukung</label>
+            <textarea name="keterangan" class="form-control" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Simpan</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+ <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <form method="POST" action="{{ url_for('tambah_nasabah') }}">
           <div class="modal-content">
@@ -192,18 +232,30 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3"><label>Nama</label><input name="nama" class="form-control" required></div>
-              <div class="mb-3"><label>NIK</label><input name="nik" class="form-control" maxlength="16" required></div>
-              <div class="mb-3"><label>Tgl Lahir</label><input type="date" name="tgl_lahir" class="form-control" required></div>
-              <div class="mb-3"><label>No HP</label><input name="no_hp" class="form-control" required></div>
-              <div class="mb-3"><label>Alamat</label><textarea name="alamat" class="form-control" required></textarea></div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% for category, message in messages %}
+                {% if category == 'nasabah_error' or category == 'success' %}
+                  <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% endwith %}
+              
+              <div class="mb-3"><label>Nama</label><input name="nama" class="form-control" alue="{{ request.form.nama }}" required></div>
+              <div class="mb-3"><label>NIK</label><input name="nik" class="form-control" maxlength="16" value="{{ request.form.nik }}" required></div>
+              <div class="mb-3"><label>Tgl Lahir</label><input type="date" name="tgl_lahir" class="form-control" alue="{{ request.form.tgl_lahir }}" required></div>
+              <!-- <div class="mb-3"><label>No HP</label><input name="no_hp" class="form-control" alue="{{ request.form.no_hp }}" required></div>
+              <div class="mb-3"><label>Alamat</label><textarea name="alamat" class="form-control" alue="{{ request.form.alamat }}" required></textarea></div> -->
               <div class="mb-3"><label>Produk</label>
                 <select name="produk_direferensikan" class="form-select" required>
                   <option value="">-- Pilih Produk --</option>
                   {% for p in produk_list %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
                 </select>
               </div>
-              <div class="mb-3"><label>Keterangan</label><textarea name="keterangan" class="form-control"></textarea></div>
+              <div class="mb-3"><label>Informasi Pendukung</label><textarea name="keterangan" class="form-control" alue="{{ request.form.keterangan }}"></textarea></div>
             </div>
             <div class="modal-footer">
               <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Simpan</button>
@@ -213,11 +265,16 @@
         </form>
       </div>
     </div>
-  </div> -->
 
   <!-- Bootstrap JS + Tooltip -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+
+    function isiFormReferral(id, nama, nik) {
+    document.getElementById('refNasabahId').value = id;
+    document.getElementById('refNama').value = nama;
+    document.getElementById('refNIK').value = nik;
+  }
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
 

@@ -132,7 +132,7 @@
       <div class="col-md-4">
         <input type="text" id="searchNm" class="form-control shadow-sm" placeholder="Cari nama / NIK / alamat"/>
       </div>
-       <div class="col-md-4">
+       <div class="col-md-2">
           <select id="filterProduk" class="form-select">
             <option value="">Produk Referral</option>
             {% set produk_terakhir = [] %}
@@ -143,6 +143,9 @@
               {% endif %}
             {% endfor %}
           </select>
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="filterTanggal" class="form-control" placeholder="Filter Tanggal Referral" />
         </div>
       <div class="col-md-2">
         <button id="btnExport" class="btn btn-success w-100 shadow-sm"><i class="bi bi-file-earmark-spreadsheet"></i> Export</button>
@@ -164,7 +167,9 @@
         </thead>
         <tbody>
           {% for n in nasabah_list %}
-          <tr data-last-product="{{ n.referral_histori[-1].product if n.referral_histori else '' }}">
+          <tr 
+            data-last-product="{{ n.referral_histori[-1].product if n.referral_histori else '' }}"
+            data-last-date="{{ n.referral_histori[-1].date if n.referral_histori else '' }}">
             <td>{{ n.nama }}</td>
             <td>{{ n.nik }}</td>
             <td>{{ n.alamat }}</td>
@@ -195,17 +200,17 @@
             </div>
             <div class="modal-body">
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                  </div>
-                {% endfor %}
+           {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+              {% if category == 'nasabah_error' or category == 'success' %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
               {% endif %}
-            {% endwith %}
-              
+            {% endfor %}
+          {% endwith %}
+                        
               <div class="mb-3"><label>Nama</label><input name="nama" class="form-control" alue="{{ request.form.nama }}" required></div>
               <div class="mb-3"><label>NIK</label><input name="nik" class="form-control" maxlength="16" value="{{ request.form.nik }}" required></div>
               <div class="mb-3"><label>Tgl Lahir</label><input type="date" name="tgl_lahir" class="form-control" alue="{{ request.form.tgl_lahir }}" required></div>
@@ -233,7 +238,7 @@
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
-        <h5 id="modalNasabahLabel" class="modal-title">Profil Nasabah</h5>
+        <h5 id="modalNasabahLabel" class="modal-title" >Profil Nasabah</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -403,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     btnSimpan.style.display = isView ? 'none' : 'inline-block';
-    modalLabel.textContent = isView ? `Profil: ${n.nama}` : `Edit: ${n.nama}`;
+    modalLabel.textContent = isView ? `Profil : ${n.nama}` : `Edit: ${n.nama}`;
   }
 
   // ===== Rekomendasi AI Rendering =====
@@ -451,19 +456,27 @@ document.addEventListener('DOMContentLoaded', function () {
   const rows = Array.from(document.querySelectorAll('#tblNasabah tbody tr'));
   document.getElementById('searchNm').oninput = applyFilter;
   document.getElementById('filterProduk').onchange = applyFilter;
+  document.getElementById('filterTanggal').onchange = applyFilter;
 
   function applyFilter() {
-    const keyword = document.getElementById('searchNm').value.toLowerCase();
-    const produk = document.getElementById('filterProduk').value.toLowerCase();
+  const keyword = document.getElementById('searchNm').value.toLowerCase();
+  const produk = document.getElementById('filterProduk').value.toLowerCase();
+  const tanggal = document.getElementById('filterTanggal')?.value;  // opsional tanggal filter
 
-    rows.forEach(row => {
-      const cells = row.innerText.toLowerCase();
-      const lastProd = (row.dataset.lastProduct || '').toLowerCase();
-      const matchKeyword = keyword === '' || cells.includes(keyword);
-      const matchProduk = produk === '' || lastProd === produk;
-      row.style.display = (matchKeyword && matchProduk) ? '' : 'none';
-    });
-  }
+  rows.forEach(row => {
+    const cells = row.innerText.toLowerCase();
+    const lastProd = (row.dataset.lastProduct || '').toLowerCase();
+    const lastDate = (row.dataset.lastDate || '');
+
+    const matchKeyword = keyword && cells.includes(keyword);
+    const matchProduk = produk && lastProd === produk;
+    const matchTanggal = tanggal && lastDate === tanggal;
+
+    const match = matchKeyword || matchProduk || matchTanggal;
+
+    row.style.display = (keyword || produk || tanggal) ? (match ? '' : 'none') : '';
+  });
+}
 
   // ===== Export Excel =====
  document.getElementById('btnExport').onclick = async () => {
@@ -473,7 +486,8 @@ document.addEventListener('DOMContentLoaded', function () {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         search: document.getElementById('searchNm').value,
-        filterProduk: document.getElementById('filterProduk').value
+        filterProduk: document.getElementById('filterProduk').value,
+        filterTanggal: document.getElementById('filterTanggal')?.value
       })
     });
 

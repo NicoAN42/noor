@@ -93,7 +93,7 @@
 
   <div class="card">
     <div class="card-header">
-      <h4 class="mb-0"><i class="bi bi-person-vcard-fill me-2"></i> Profil Nasabah: {{ nasabah.nama }}</h4>
+      <h4 class="mb-0"><i class="bi bi-person-vcard-fill me-2"></i> Profil Nasabah : {{ nasabah.nama }}</h4>
     </div>
     <div class="card-body">
       {% if nasabah %}
@@ -137,6 +137,13 @@
             <em class="text-muted">Belum ada referral.</em>
           {% endif %}
         </div>
+
+        <div class="text-end mb-3">
+          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambahReferral">
+            <i class="bi bi-plus-circle"></i>  Referral
+          </button>
+        </div>
+
       {% else %}
         <p class="text-danger">Data nasabah tidak ditemukan.</p>
       {% endif %}
@@ -180,9 +187,63 @@
 </button>
 {% endif %}
 
+<div class="modal fade" id="modalTambahReferral" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('tambah_referral') }}">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Tambah Produk Referral</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Input hidden untuk ID nasabah -->
+          <input type="hidden" name="nasabah_id" value="{{ nasabah.id }}">
+
+          <div class="mb-3">
+            <label>Nama</label>
+            <input type="text" class="form-control" value="{{ nasabah.nama }}" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label>NIK</label>
+            <input type="text" class="form-control" value="{{ nasabah.nik }}" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label>Produk Direferensikan</label>
+            <select name="produk" class="form-select" required>
+              <option value="">-- Pilih Produk --</option>
+              {% for p in produk_list %}
+              <option value="{{ p }}">{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label>Informasi Pendukung</label>
+            <textarea name="keterangan" class="form-control" rows="2" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Simpan</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Show Modal Otomatis dan Interaksi Tooltip -->
 {% if show_modal and rekomendasi_ai %}
 <script>
+
+function isiFormReferral(id, nama, nik) {
+    document.getElementById('refNasabahId').value = id;
+    document.getElementById('refNama').value = nama;
+    document.getElementById('refNIK').value = nik;
+  }
+
+
   document.addEventListener("DOMContentLoaded", function () {
     var modal = new bootstrap.Modal(document.getElementById('recommendationModal'));
     var button = document.getElementById('minimizedBtn');

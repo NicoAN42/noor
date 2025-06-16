@@ -251,7 +251,7 @@ def login():
             elif user['role'] == 'admin':
                 return redirect(url_for('dashboard_admin'))
         else:
-            flash('Username atau password salah', 'danger')
+            flash('Username atau password salah', 'login_error')
 
     return render_template('login.html')
 
@@ -260,15 +260,31 @@ def dashboard_pic():
     if session.get('role') != 'pic':
         return redirect(url_for('login'))
 
+    role = session.get('role')
+
+    # Untuk PIC, tampilkan data tanpa masking
+    # (jika ingin masking, logika bisa disesuaikan di bawah)
+    masked_nasabah_list = []
+    for n in nasabah_list:
+        masked_nasabah_list.append({
+            'id': n['id'],
+            'nama': n['nama'],
+            'nik': n['nik'],
+            'tgl_lahir': n['tgl_lahir'],
+            'no_hp': n['no_hp'],  # Unmasked
+            'alamat': n['alamat'],  # Unmasked
+            'produk': n.get('produk', []),
+            'keterangan': n.get('keterangan', ''),
+            'referral_histori': n.get('referral_histori', [])
+        })
+
     return render_template(
         'dashboard_pic.html',
         username=session.get('username'),
-        nasabah_list=nasabah_list,
+        nasabah_list=masked_nasabah_list,
         produk_list=produk_list,
-        show_add_modal = request.args.get('show_add_modal') == '1'
-        
+        show_add_modal=request.args.get('show_add_modal') == '1'
     )
-
 
 @app.route('/dashboard/karyawan', methods=['GET', 'POST'])
 def dashboard_karyawan():
@@ -332,64 +348,65 @@ def dashboard_karyawan():
 
 @app.route('/tambah_nasabah', methods=['POST'])
 def tambah_nasabah():
+    role = session.get('role')
     nama = request.form.get('nama', '').strip()
     nik = request.form.get('nik', '').strip()
-    no_hp = request.form.get('no_hp', '').strip()
-    alamat = request.form.get('alamat', '').strip()
     tgl_lahir = request.form.get('tgl_lahir', '').strip()
     produk_direferensikan = request.form.get('produk_direferensikan', '').strip()
     keterangan = request.form.get('keterangan', '').strip()
 
-    
-    # Helper untuk kirim ulang form saat gagal
-    def return_with_error(msg):
-        flash(msg, "danger")
-        return render_template(
-            'dashboard_pic.html',
-            username=session.get('username'),
-            nasabah_list=nasabah_list,
-            produk_list=produk_list,
-            show_add_modal=True,
-            form_data={
-                'nama': nama,
-                'nik': nik,
-                'no_hp': no_hp,
-                'alamat': alamat,
-                'tgl_lahir': tgl_lahir,
-                'produk_direferensikan': produk_direferensikan,
-                'keterangan': keterangan
-            }
-        )
+    if role == 'karyawan':
+        no_hp = "-"
+        alamat = "-"
+    else:
+        no_hp = request.form.get('no_hp', '').strip()
+        alamat = request.form.get('alamat', '').strip()
+        
 
-    # Validasi Nama
+    def return_with_error(msg):
+        flash(msg, "nasabah_error")
+        if role == 'pic':
+            return render_template(
+                'dashboard_pic.html',
+                username=session.get('username'),
+                nasabah_list=nasabah_list,
+                produk_list=produk_list,
+                show_add_modal=True,
+                form_data={
+                    'nama': nama,
+                    'nik': nik,
+                    'no_hp': no_hp,
+                    'alamat': alamat,
+                    'tgl_lahir': tgl_lahir,
+                    'produk_direferensikan': produk_direferensikan,
+                    'keterangan': keterangan
+                }
+            )
+        else:
+            return redirect(url_for('dashboard_karyawan', show_add_modal=1))  # fallback aman
+
+    # === Validasi ===
     if not nama:
         return return_with_error("Nama wajib diisi.")
-
-    # Validasi NIK
     if not nik or not nik.isdigit() or len(nik) != 16:
         return return_with_error("NIK harus terdiri dari 16 digit angka.")
     if any(n['nik'] == nik for n in nasabah_list):
         return return_with_error("NIK sudah terdaftar, silakan gunakan NIK lain.")
-
-    # Validasi Tanggal Lahir
     try:
         datetime.strptime(tgl_lahir, '%Y-%m-%d')
     except ValueError:
         return return_with_error("Format tanggal lahir tidak valid. Gunakan format YYYY-MM-DD.")
 
-    # Validasi Nomor HP
-    if not no_hp.startswith('08') or not no_hp.isdigit() or not (10 <= len(no_hp) <= 13):
-        return return_with_error("Nomor HP harus dimulai dengan 08 dan memiliki 10-13 digit angka.")
+    if role != 'karyawan':
+        if not no_hp.startswith('08') or not no_hp.isdigit() or not (10 <= len(no_hp) <= 13):
+            return return_with_error("Nomor HP harus dimulai dengan 08 dan memiliki 10-13 digit angka.")
+        if not alamat:
+            return return_with_error("Alamat wajib diisi.")
 
-    # Validasi Alamat
-    if not alamat:
-        return return_with_error("Alamat wajib diisi.")
-
-    # Validasi Produk Direferensikan
     if not produk_direferensikan:
         return return_with_error("Produk yang direferensikan wajib dipilih.")
 
-    # Simpan Nasabah Baru
+    # === Simpan Data Nasabah Baru ===
     nasabah_id = str(uuid.uuid4())[:8]
     new_nasabah = {
         'id': nasabah_id,
@@ -398,19 +415,25 @@ def tambah_nasabah():
         'no_hp': no_hp,
         'alamat': alamat,
         'tgl_lahir': tgl_lahir,
-        'produk': [],  # ⛔ Tidak diisi dari produk direferensikan
+        'produk': [],
         'keterangan': keterangan,
         'referral_histori': [{
             'product': produk_direferensikan,
             'description': keterangan,
             'date': datetime.now().strftime('%Y-%m-%d')
-        }]
+        }],
+        'created_by': session.get('username')
     }
 
     nasabah_list.append(new_nasabah)
     flash("Nasabah baru berhasil ditambahkan.", "success")
-    return redirect(url_for('dashboard_pic'))
 
+    if role == 'pic':
+        return redirect(url_for('dashboard_pic'))
+    elif role == 'karyawan':
+        return redirect(url_for('dashboard_karyawan'))
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/tambah_referral', methods=['POST'])
 def tambah_referral():
@@ -421,13 +444,14 @@ def tambah_referral():
     for nasabah in nasabah_list:
         if nasabah['id'] == nasabah_id:
             nasabah['referral_histori'].append({
-                'produk': produk,
-                'keterangan': keterangan,
-                'tanggal': datetime.now().strftime('%Y-%m-%d')
+                'product': produk,
+                'description': keterangan,
+                'date': datetime.now().strftime('%Y-%m-%d')
             })
             break
-    return redirect(url_for('dashboard_pic', show_add_modal=1))
-    # return redirect(url_for('dashboard_pic'))
+
+    flash("Referral produk berhasil ditambahkan.", "success")
+    return redirect(url_for('dashboard_karyawan'))
 
 @app.route('/nasabah/<nasabah_id>')
 def profil_nasabah(nasabah_id):
@@ -450,7 +474,7 @@ def profil_nasabah(nasabah_id):
     if not nasabah:
         return redirect(url_for('dashboard_karyawan'))
    
-    return render_template('profil_nasabah.html', nasabah=nasabah,rekomendasi_ai=rekomendasi_ai,show_modal=show_modal)
+    return render_template('profil_nasabah.html', nasabah=nasabah,rekomendasi_ai=rekomendasi_ai,show_modal=show_modal,produk_list=produk_list)
 
 @app.route('/logout', methods=['GET'])
 def logout():
@@ -504,16 +528,19 @@ def pic_edit_nasabah():
 
 @app.route('/pic/export_excel', methods=['POST'])
 def pic_export_excel():
+    import tempfile, os
     data = request.get_json()
     search = data.get('search', '').strip().lower()
     filter_produk = data.get('filterProduk', '').strip()
+    filter_tanggal = data.get('filterTanggal', '').strip()
 
-    nama_filter = filter_produk if filter_produk else 'semua'
+    # Nama file berdasarkan filter
+    nama_filter = f"{filter_produk or 'semua'}_{filter_tanggal or 'semua'}"
     safe_nama = re.sub(r'[^\w\-]', '_', nama_filter.strip().lower())
     excel_filename = f'referral_{safe_nama}.xlsx'
     password_filename = f'password_{safe_nama}.txt'
 
-    # Buat DataFrame
+    # Buat DataFrame dari nasabah_list
     df = pd.DataFrame([
         {
             'ID': n['id'],
@@ -530,43 +557,56 @@ def pic_export_excel():
         for n in nasabah_list
     ])
 
-    # Filter
+    # Filter pencarian (nama, nik, alamat)
     if search:
         df = df[df.apply(lambda row:
             search in str(row['Nama']).lower() or
             search in str(row['NIK']).lower() or
-            search in str(row['Alamat']).lower(), axis=1)]
+            search in str(row['Alamat']).lower(),
+            axis=1
+        )]
 
-    if filter_produk:
-        df = df[df['Produk Referral Terakhir'].str.lower() == filter_produk.lower()]
+    # Filter produk/tanggal: logika OR (salah satu cocok)
+    if filter_produk or filter_tanggal:
+        df = df[df.apply(lambda row:
+            (filter_produk and row['Produk Referral Terakhir'].lower() == filter_produk.lower()) or
+            (filter_tanggal and row['Referral Terakhir'] == filter_tanggal),
+            axis=1
+        )]
 
-    # Password & Paths
+    # ===== Buat Excel File dengan 2 Sheet dan Proteksi =====
     password = secrets.token_urlsafe(8)
     tmpdir = tempfile.mkdtemp()
     excel_path = os.path.join(tmpdir, excel_filename)
     password_path = os.path.join(tmpdir, password_filename)
 
-    # Excel File with Protection
+    import xlsxwriter
     workbook = xlsxwriter.Workbook(excel_path)
+
+    # Sheet 1: Informasi
     info_sheet = workbook.add_worksheet('Informasi')
-    info_sheet.write('A1', 'Data ini bersifat rahasia')
+    info_sheet.write('A1', 'Data ini bersifat rahasia dan dilindungi password.')
     info_sheet.protect(password)
 
+    # Sheet 2: Data Nasabah (terproteksi dan disembunyikan)
     data_sheet = workbook.add_worksheet('Data Nasabah')
     for col_idx, col_name in enumerate(df.columns):
         data_sheet.write(0, col_idx, col_name)
+
     for row_idx, row in enumerate(df.itertuples(index=False), start=1):
         for col_idx, val in enumerate(row):
             data_sheet.write(row_idx, col_idx, val)
+
     data_sheet.protect(password)
-    data_sheet.hide()
+    data_sheet.hide()  # disembunyikan
 
     workbook.close()
 
+    # Simpan file password terpisah
     with open(password_path, 'w') as f:
         f.write(f'Password: {password}')
 
-    # Simpan path ke session agar aman
+    # Simpan path ke session
     session['export_excel_path'] = excel_path
     session['export_password_path'] = password_path
     session['export_excel_name'] = excel_filename
