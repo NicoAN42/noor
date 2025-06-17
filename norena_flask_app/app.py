@@ -23,35 +23,35 @@ app.secret_key = 'noreana_secret_key'
 
 # Dummy user login data
 users = {
-    'karyawan1': {'password': '1234', 'role': 'karyawan'},
-    'pic1': {'password': '1234', 'role': 'pic'},
-    'admin1': {'password': '1234', 'role': 'admin'},
-    'superadmin1': {'password': '1234', 'role': 'superadmin'}
+    'karyawan1': {'password': 'jadiTerbaik#1', 'role': 'karyawan'},
+    'pic1': {'password': 'jadiTerbaik#1', 'role': 'pic'},
+    'admin1': {'password': 'jadiTerbaik#1', 'role': 'admin'},
+    'superadmin1': {'password': 'jadiTerbaik#1', 'role': 'superadmin'}
 }
 
 user_list = [
 {
 'id': 'u001',
 'username': 'karyawan1',
-'password': '1234',
+'password': 'jadiTerbaik#1',
 'role': 'karyawan'
 },
 {
 'id': 'u002',
 'username': 'pic1',
-'password': '1234',
+'password': 'jadiTerbaik#1',
 'role': 'pic'
 },
 {
 'id': 'u003',
 'username': 'admin1',
-'password': '1234',
+'password': 'jadiTerbaik#1',
 'role': 'admin'
 },
 {
 'id': 'u004',
 'username': 'superadmin1',
-'password': '1234',
+'password': 'jadiTerbaik#1',
 'role': 'superadmin'
 }
 ]
