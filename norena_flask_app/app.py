@@ -14,8 +14,15 @@ from functools import wraps
 from flask import redirect, url_for, session, request, flash, render_template
 from functools import wraps
 from flask import session, redirect, url_for, request, g
+# import webbrowser
+# from threading import Timer
 
+# def open_browser():
+#     webbrowser.open_new('http://127.0.0.1:5000/')
 
+#     if __name__ == '__main__':
+#       Timer(1.25, open_browser).start() # Delay to allow Flask to start
+#     app.run(host='127.0.0.1', port=5000)
 
 
 app = Flask(__name__)
@@ -1274,4 +1281,4 @@ def download_export_password():
     return 'File tidak tersedia.', 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000,debug=True)
+    app.run(host='0.0.0.0', port=5000)
