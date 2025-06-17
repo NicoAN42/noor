@@ -7,13 +7,42 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+
   
   <style>
+
+
     body {
       background: linear-gradient(to bottom right, #eaf4ff, #ffffff);
       font-family: 'Segoe UI', 'Poppins', sans-serif;
       color: #2c3e50;
     }
+
+    /* .floating-actions button {
+transition: all 0.3s ease;
+}
+.floating-actions button:hover {
+transform: translateY(-3px) scale(1.02);
+box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+} */
+ .fab-wrapper { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 14px; z-index:
+ 999; } .fab { width: 56px; height: 56px; border-radius: 50%; border: none; color: #fff; background-color: #0d6efd;
+ box-shadow: 0 6px 20px rgba(0,0,0,0.15); font-size: 22px; display: flex; align-items: center; justify-content: center;
+ cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease; } .fab:hover { transform: scale(1.1);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.2); } .fab-success { background-color: #198754; } .fab-success:hover {
+ background-color: #157347; } .fab-primary { background-color: #0d6efd; } .fab-primary:hover { background-color:
+ #0b5ed7; }
+
+ .floating-buttons { position: fixed; bottom: 2rem; right: 2rem; display: flex; flex-direction: column; align-items:
+ flex-end; gap: 1rem; z-index: 1050; } .floating-btn { background-color: #0d6efd; color: white; border: none;
+ border-radius: 50px; padding: 0.75rem 1rem; display: flex; align-items: center; font-size: 0.95rem; font-weight: 500;
+ box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer; transition: width 0.3s ease, background-color 0.3s ease;
+ overflow: hidden; white-space: nowrap; width: 3.5rem; } .floating-btn i { font-size: 1.25rem; } .floating-btn span {
+ margin-left: 0.75rem; opacity: 0; transition: opacity 0.3s ease; display: none; } .floating-btn:hover { width: 12rem; }
+ .floating-btn:hover span { display: inline; opacity: 1; } .btn-export { background-color: #198754; } .btn-export:hover
+ { background-color: #157347; } .btn-add { background-color: #0d6efd; } .btn-add:hover { background-color: #0b5ed7; }
 
     .header-bar {
       display: flex;
@@ -109,424 +138,587 @@
 </head>
 <body data-show-add="{{ '1' if show_add_modal else '0' }}">
   <div class="container py-4">
-    
-
-        <!-- {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %} -->
 
     <div class="header-bar">
-      <h2 class="text-primary"><i class="bi bi-people-fill me-2"></i>Dashboard PIC</h2>
-     
-      <a href="{{ url_for('logout') }}" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
+      <h2 class="text-primary"><i class="bi bi-people-fill me-2"></i>Dashboard PIC Referral</h2>
+
+      <a href="{{ url_for('logout') }}" class="btn btn-outline-danger"><i
+          class="bi bi-box-arrow-right"></i> Logout</a>
     </div>
 
-    <div class="row filter-bar mb-4">
-      <div class="col-md-4">
-        <input type="text" id="searchNm" class="form-control shadow-sm" placeholder="Cari nama / NIK / alamat"/>
-      </div>
-       <div class="col-md-2">
-          <select id="filterProduk" class="form-select">
-            <option value="">Produk Referral</option> {% set unique_produk = [] %} {% for r in referral_list %}
+    <form method="get" action="{{ url_for('dashboard_pic') }}" id="filterForm">
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-md-4 col-sm-6"> <label class="form-label fw-semibold">Pencarian</label> <input type="text"
+            name="search" id="searchNm" class="form-control shadow-sm" placeholder="Cari nama / NIK / alamat"
+            autocomplete="off" /> </div>
+        <div class="col-md-4 col-sm-6"> <label class="form-label fw-semibold">Produk Referral</label> <select
+            id="filterProduk" name="filterProduk" class="form-select shadow-sm">
+            <option value="">Semua Produk</option> {% set unique_produk = [] %} {% for r in referral_list %}
             {% if r.referral_produk and r.referral_produk not in unique_produk %}
-            {% set _ = unique_produk.append(r.referral_produk) %} <option value="{{ r.referral_produk }}">
-              {{ r.referral_produk }}</option> {% endif %} {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2">
-          <input type="date" id="filterTanggal" class="form-control" placeholder="Filter Tanggal Referral" />
-        </div>
-      <div class="col-md-2">
-        <button id="btnExport" class="btn btn-success w-100 shadow-sm"><i class="bi bi-file-earmark-spreadsheet"></i> Export</button>
-        
+            {% set _ = unique_produk.append(r.referral_produk) %} <option value="{{ r.referral_produk }}"
+              {% if request.args.get('filterProduk') == r.referral_produk %}selected{% endif %}> {{ r.referral_produk }}
+            </option> {% endif %} {% endfor %}
+          </select> </div>
+        <div class="col-md-4 col-sm-6"> <label class="form-label fw-semibold">Tanggal Referral</label> <input
+            type="date" id="filterTanggal" name="filterTanggal" class="form-control shadow-sm"
+            value="{{ request.args.get('filterTanggal', '') }}" /> </div>
       </div>
-       <div class="col-md-2">
-       <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addNasabahModal">
-          <i class="bi bi-person-plus"></i> Tambah Nasabah
-        </button>
-        </div>
-    </div>
+    </form> <!-- Floating Buttons -->
+    <!-- <div class="floating-actions d-flex flex-column gap-2 position-fixed bottom-0 end-0 p-4" style="z-index: 1030;">
+      <button id="btnExport" class="btn btn-success rounded-pill shadow-lg d-flex align-items-center"
+        title="Export Data"> <i class="bi bi-file-earmark-excel fs-5 me-2"></i> Export </button> <button
+        class="btn btn-primary rounded-pill shadow-lg d-flex align-items-center" data-bs-toggle="modal"
+        data-bs-target="#addNasabahModal" title="Tambah Nasabah"> <i class="bi bi-person-plus fs-5 me-2"></i> Tambah
+        Nasabah </button> </div> -->
 
-    <div class="table-responsive">
-      <table class="table table-hover align-middle bg-white shadow-sm" id="tblReferral">
-        <thead>
-          <tr class="text-center">
-            <th>Nama</th>
-            <th>NIK</th>
-            <th>Alamat</th>
-            <!-- <th>Produk Dimiliki</th> -->
-            <th>Informasi</th>
-            <th>Tanggal Referral</th>
-            <th>Produk Referral</th>
-            <!-- <th>Deskripsi</th> -->
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody> {% if referral_list %} {% for r in referral_list %} <tr data-last-product="{{ r.referral_produk }}"
-            data-last-date="{{ r.referral_tanggal }}">
-            <td>{{ r.nama }}</td>
-            <td>{{ r.nik }}</td>
-            <td>{{ r.alamat }}</td>
-            <!-- <td>{{ r.produk_dimiliki }}</td> -->
-            <td>{{ r.keterangan or '-' }}</td>
-            <td>{{ r.referral_tanggal }}</td>
-            <td>{{ r.referral_produk }}</td>
-            <!-- <td>{{ r.referral_deskripsi or '-' }}</td> -->
-            <td class="text-center"> <button class="btn btn-sm btn-outline-primary btnView me-1" data-id="{{ r.id }}"> <i
-                  class="bi bi-eye"></i> </button> <button class="btn btn-sm btn-outline-warning btnEdit"
-                data-id="{{ r.id }}"> <i class="bi bi-pencil"></i> </button> </td>
-          </tr> {% endfor %} {% else %} <tr>
-            <td colspan="9" class="text-center text-muted py-3"> <em>Tidak ada data referral yang tersedia.</em> </td>
-          </tr> {% endif %} </tbody>
-      </table>
-    </div>
-    </div>
-
-   
-
-     <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <form method="POST" action="{{ url_for('tambah_nasabah') }}">
-          <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title" id="modalLabel"><i class="bi bi-person-plus me-2"></i>Tambah Nasabah</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-            </div>
-            <div class="modal-body">
-
-           {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-              {% if category == 'nasabah_error' or category == 'success' %}
-                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
-                  {{ message }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-              {% endif %}
-            {% endfor %}
-          {% endwith %}
-                        
-              <div class="mb-3"><label>Nama</label><input name="nama" class="form-control" alue="{{ request.form.nama }}" required></div>
-              <div class="mb-3"><label>NIK</label><input name="nik" class="form-control" maxlength="16" value="{{ request.form.nik }}" required></div>
-              <div class="mb-3"><label>Tgl Lahir</label><input type="date" name="tgl_lahir" class="form-control" alue="{{ request.form.tgl_lahir }}" required></div>
-              <div class="mb-3"><label>No HP</label><input name="no_hp" class="form-control" alue="{{ request.form.no_hp }}" required></div>
-              <div class="mb-3"><label>Alamat</label><textarea name="alamat" class="form-control" alue="{{ request.form.alamat }}" required></textarea></div>
-              <div class="mb-3"><label>Produk</label>
-                <select name="produk_direferensikan" class="form-select" required>
-                  <option value="">-- Pilih Produk --</option>
-                  {% for p in produk_list %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
-                </select>
-              </div>
-              <div class="mb-3"><label>Keterangan</label><textarea name="keterangan" class="form-control" alue="{{ request.form.keterangan }}"></textarea></div>
-            </div>
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Simpan</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-<div class="modal fade" id="modalNasabah" tabindex="-1">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 id="modalNasabahLabel" class="modal-title" >Profil Nasabah</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row">
-          <!-- Kiri: Form -->
-          <div class="col-md-6" id="colFormNasabah">
-            <form id="formNasabah">
-              <input type="hidden" name="id" id="nId" />
-
-              <div class="mb-3">
-                <label for="nNama" class="form-label">Nama</label>
-                <input type="text" class="form-control" id="nNama" name="nama" required />
-              </div>
-
-              <div class="mb-3">
-                <label for="nNIK" class="form-label">NIK</label>
-                <input type="text" class="form-control" id="nNIK" name="nik" required />
-              </div>
-
-              <div class="mb-3">
-                <label for="nTgl" class="form-label">Tanggal Lahir</label>
-                <input type="date" class="form-control" id="nTgl" name="tgl_lahir" />
-              </div>
-
-              <div class="mb-3">
-                <label for="nHP" class="form-label">No HP</label>
-                <input type="text" class="form-control" id="nHP" name="no_hp" />
-              </div>
-
-              <div class="mb-3">
-                <label for="nAlamat" class="form-label">Alamat</label>
-                <textarea class="form-control" id="nAlamat" name="alamat" rows="2"></textarea>
-              </div>
-
-              <div class="mb-3">
-                <label for="nKet" class="form-label">Keterangan</label>
-                <textarea class="form-control" id="nKet" name="keterangan" rows="2"></textarea>
-              </div>
-
-              <div class="mb-3 d-none" id="produkChecklist">
-                <label class="form-label">Checklist Produk Dimiliki</label>
-                <div class="row">
-                  {% for p in produk_list %}
-                  <div class="col-sm-6">
-                    <div class="form-check">
-                      <input class="form-check-input produk-item" type="checkbox" value="{{ p }}" name="produk" id="produk-{{ p }}">
-                      <label class="form-check-label" for="produk-{{ p }}">{{ p }}</label>
-                    </div>
-                  </div>
-                  {% endfor %}
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Riwayat Referral</label>
-                <ul class="list-group" id="nRiwayat"></ul>
-              </div>
-
-              <div class="text-end">
-                <button type="submit" class="btn btn-success" id="btnSimpan">Simpan Perubahan</button>
-              </div>
-            </form>
-          </div>
-
-          <!-- Kanan: Rekomendasi AI -->
-          <div class="col-md-6" id="colAIRekomendasi">
-            <h6 class="text-primary">Rekomendasi Produk oleh AI</h6>
-            <div id="nRekomendasiAI" class="pt-2"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <div class="table-responsive rounded-4 shadow-sm">
+  <table class="table table-bordered table-hover align-middle text-center bg-white" id="tblReferral">
+    <thead class="table-primary text-dark fw-semibold">
+      <tr>
+        <th class="px-4 py-3">Nama</th>
+        <th class="px-4 py-3">NIK</th>
+        <th class="px-4 py-3">Alamat</th>
+        <th class="px-4 py-3">Informasi</th>
+        <th class="px-4 py-3">Tanggal Referral</th>
+        <th class="px-4 py-3">Produk Referral</th>
+        <th class="px-4 py-3">View</th>
+        <th class="px-4 py-3">Edit</th>
+      </tr>
+    </thead>
+    <tbody class="table-light">
+      {% if referral_list %}
+        {% for r in referral_list %}
+        <tr data-last-product="{{ r.referral_produk }}" data-last-date="{{ r.referral_tanggal }}">
+          <td class="px-4 py-3">{{ r.nama }}</td>
+          <td class="px-4 py-3">{{ r.nik }}</td>
+          <td class="px-4 py-3">{{ r.alamat }}</td>
+          <td class="px-4 py-3">{{ r.keterangan or '-' }}</td>
+          <td class="px-4 py-3">{{ r.referral_tanggal }}</td>
+          <td class="px-4 py-3">{{ r.referral_produk }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary rounded-pill btnView" data-id="{{ r.id }}">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-warning rounded-pill btnEdit" data-id="{{ r.id }}">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center text-muted py-4">
+          <em>Tidak ada data referral yang tersedia.</em>
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
 </div>
+      <!-- PAGINATION -->
+       <div class="d-flex justify-content-between align-items-center mt-4">
+  <div class="text-muted ms-2">
+    Menampilkan halaman <strong>{{ page }}</strong> dari <strong>{{ pages }}</strong>
+  </div>
+  <nav>
+    <ul class="pagination pagination-lg mb-0">
+      {% if page > 1 %}
+      <li class="page-item">
+        <a class="page-link px-4 text-primary border-primary" href="{{ url_for('dashboard_pic', page=page-1) }}">
+          &laquo; Sebelumnya
+        </a>
+      </li>
+      {% endif %}
+
+      {% for p in range(1, pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link px-4 {% if p == page %}bg-primary border-primary text-white{% else %}text-primary{% endif %}"
+          href="{{ url_for('dashboard_pic', page=p) }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+
+      {% if page < pages %}
+      <li class="page-item">
+        <a class="page-link px-4 text-primary border-primary" href="{{ url_for('dashboard_pic', page=page+1) }}">
+          Berikutnya &raquo;
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+<!-- Pagniation -->
+    </div>
+  </div>
+
+
+
+  <div class="modal fade" id="addNasabahModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <form method="POST" action="{{ url_for('tambah_nasabah') }}">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="modalLabel"><i class="bi bi-person-plus me-2"></i>Tambah Nasabah</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
+          <div class="modal-body">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            {% if category == 'nasabah_error' or category == 'success' %}
+            <div
+              class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show"
+              role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endwith %}
+
+            <div class="mb-3"><label>Nama</label><input name="nama" class="form-control" alue="{{ request.form.nama }}"
+                required></div>
+            <div class="mb-3"><label>NIK</label><input name="nik" class="form-control" maxlength="16"
+                value="{{ request.form.nik }}" required></div>
+            <div class="mb-3"><label>Tgl Lahir</label><input type="date" name="tgl_lahir" class="form-control"
+                alue="{{ request.form.tgl_lahir }}" required></div>
+            <div class="mb-3"><label>No HP</label><input name="no_hp" class="form-control" alue="{{ request.form.no_hp }}"
+                required></div>
+            <div class="mb-3"><label>Alamat</label><textarea name="alamat" class="form-control"
+                alue="{{ request.form.alamat }}" required></textarea></div>
+            <div class="mb-3"><label>Produk</label>
+              <select name="produk_direferensikan" class="form-select" required>
+                <option value="">-- Pilih Produk --</option>
+                {% for p in produk_list %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="mb-3"><label>Keterangan</label><textarea name="keterangan" class="form-control"
+                alue="{{ request.form.keterangan }}"></textarea></div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Simpan</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+
+  <div class="modal fade" id="modalNasabah" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 id="modalNasabahLabel" class="modal-title">Profil Nasabah</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <!-- Kiri: Form -->
+            <div class="col-md-6" id="colFormNasabah">
+              <form id="formNasabah">
+                <input type="hidden" name="id" id="nId" />
+
+                <div class="mb-3">
+                  <label for="nNama" class="form-label">Nama</label>
+                  <input type="text" class="form-control" id="nNama" name="nama" required />
+                </div>
+
+                <div class="mb-3">
+                  <label for="nNIK" class="form-label">NIK</label>
+                  <input type="text" class="form-control" id="nNIK" name="nik" required />
+                </div>
+
+                <div class="mb-3">
+                  <label for="nTgl" class="form-label">Tanggal Lahir</label>
+                  <input type="date" class="form-control" id="nTgl" name="tgl_lahir" />
+                </div>
+
+                <div class="mb-3">
+                  <label for="nHP" class="form-label">No HP</label>
+                  <input type="text" class="form-control" id="nHP" name="no_hp" />
+                </div>
+
+                <div class="mb-3">
+                  <label for="nAlamat" class="form-label">Alamat</label>
+                  <textarea class="form-control" id="nAlamat" name="alamat" rows="2"></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label for="nKet" class="form-label">Keterangan</label>
+                  <textarea class="form-control" id="nKet" name="keterangan" rows="2"></textarea>
+                </div>
+
+                <div class="mb-3 d-none" id="produkChecklist">
+                  <label class="form-label">Checklist Produk Dimiliki</label>
+                  <div class="row">
+                    {% for p in produk_list %}
+                    <div class="col-sm-6">
+                      <div class="form-check">
+                        <input class="form-check-input produk-item" type="checkbox" value="{{ p }}" name="produk"
+                          id="produk-{{ p }}">
+                        <label class="form-check-label" for="produk-{{ p }}">{{ p }}</label>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Riwayat Referral</label>
+                  <ul class="list-group" id="nRiwayat"></ul>
+                </div>
+
+                <div class="text-end">
+                  <button type="submit" class="btn btn-success" id="btnSimpan">Simpan Perubahan</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Kanan: Rekomendasi AI -->
+            <div class="col-md-6" id="colAIRekomendasi">
+              <h6 class="text-primary">Rekomendasi Produk oleh AI</h6>
+              <div id="nRekomendasiAI" class="pt-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   
  <script>
-document.addEventListener('DOMContentLoaded', function () {
+   document.addEventListener('DOMContentLoaded', function () {
 
-  // ========== Show Add Modal jika dari backend dikirim show_add_modal ==========
-   const showAddModal = document.body.dataset.showAdd === '1';
-    if (showAddModal) {
-      const addModalEl = document.getElementById('addNasabahModal');
-      const addModal = new bootstrap.Modal(addModalEl);
-      setTimeout(() => addModal.show(), 200);
-    }
+     // ========== Show Add Modal jika dari backend dikirim show_add_modal ==========
+     const showAddModal = document.body.dataset.showAdd === '1';
+     if (showAddModal) {
+       const addModalEl = document.getElementById('addNasabahModal');
+       const addModal = new bootstrap.Modal(addModalEl);
+       setTimeout(() => addModal.show(), 200);
+     }
 
-  // ========== Flash auto-hide ==========
-  setTimeout(() => {
-    const alert = document.querySelector('.alert');
-    if (alert) alert.remove();
-  }, 4000);
+     // ========== Flash auto-hide ==========
+     setTimeout(() => {
+       const alert = document.querySelector('.alert');
+       if (alert) alert.remove();
+     }, 4000);
 
-  const modalElement = document.getElementById('modalNasabah');
-  const modal = new bootstrap.Modal(modalElement);
+     const modalElement = document.getElementById('modalNasabah');
+     const modal = new bootstrap.Modal(modalElement);
 
-  const form = document.getElementById('formNasabah');
-  const produkChecklist = document.getElementById('produkChecklist');
-  const btnSimpan = document.getElementById('btnSimpan');
-  const modalLabel = document.getElementById('modalNasabahLabel');
-  const rekomendasiAI = document.getElementById('nRekomendasiAI');
-  const riwayatList = document.getElementById('nRiwayat');
-  const colAI = document.getElementById('colAIRekomendasi');
-  const colForm = document.getElementById('colFormNasabah');
+     const form = document.getElementById('formNasabah');
+     const produkChecklist = document.getElementById('produkChecklist');
+     const btnSimpan = document.getElementById('btnSimpan');
+     const modalLabel = document.getElementById('modalNasabahLabel');
+     const rekomendasiAI = document.getElementById('nRekomendasiAI');
+     const riwayatList = document.getElementById('nRiwayat');
+     const colAI = document.getElementById('colAIRekomendasi');
+     const colForm = document.getElementById('colFormNasabah');
 
-  // ===== View/Edit Button Handler =====
-  document.querySelectorAll('.btnView, .btnEdit').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const isView = btn.classList.contains('btnView');
-      const id = btn.dataset.id;
+     // ===== View/Edit Button Handler =====
+     document.querySelectorAll('.btnView, .btnEdit').forEach(btn => {
+       btn.addEventListener('click', async () => {
+         const isView = btn.classList.contains('btnView');
+         const id = btn.dataset.id;
 
-      try {
-        const resp = await fetch('/pic/get_nasabah?id=' + id);
-        const n = await resp.json();
-        loadNasabah(n, isView);
-        modal.show();
-      } catch (err) {
-        alert('Gagal mengambil data nasabah.');
-        console.error(err);
-      }
-    });
-  });
+         try {
+           const resp = await fetch('/pic/get_nasabah?id=' + id);
+           const n = await resp.json();
+           loadNasabah(n, isView);
+           modal.show();
+         } catch (err) {
+           alert('Gagal mengambil data nasabah.');
+           console.error(err);
+         }
+       });
+     });
 
-  // ===== Load Data into Modal Form =====
-  function loadNasabah(n, isView) {
-    form.reset();
-    document.getElementById('nId').value = n.id || '';
-    document.getElementById('nNama').value = n.nama || '';
-    document.getElementById('nNIK').value = n.nik || '';
-    document.getElementById('nTgl').value = n.tgl_lahir || '';
-    document.getElementById('nHP').value = n.no_hp || '';
-    document.getElementById('nAlamat').value = n.alamat || '';
-    document.getElementById('nKet').value = n.keterangan || '';
+     // ===== Load Data into Modal Form =====
+     function loadNasabah(n, isView) {
+       form.reset();
+       document.getElementById('nId').value = n.id || '';
+       document.getElementById('nNama').value = n.nama || '';
+       document.getElementById('nNIK').value = n.nik || '';
+       document.getElementById('nTgl').value = n.tgl_lahir || '';
+       document.getElementById('nHP').value = n.no_hp || '';
+       document.getElementById('nAlamat').value = n.alamat || '';
+       document.getElementById('nKet').value = n.keterangan || '';
 
-    produkChecklist.classList.toggle('d-none', isView);
-    document.querySelectorAll('.produk-item').forEach(cb => {
-      cb.checked = (n.produk || []).includes(cb.value);
-    });
+       produkChecklist.classList.toggle('d-none', isView);
+       document.querySelectorAll('.produk-item').forEach(cb => {
+         cb.checked = (n.produk || []).includes(cb.value);
+       });
 
-    riwayatList.innerHTML = '';
-    if (n.referral_histori?.length > 0) {
-      n.referral_histori.forEach(r => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item';
-        li.innerHTML = `<strong>${r.product}</strong><br><small>${r.date}</small><br>${r.description || r.keterangan || ''}`;
-        riwayatList.appendChild(li);
-      });
-    } else {
-      riwayatList.innerHTML = `<li class="list-group-item text-muted">Belum ada referral</li>`;
-    }
+       riwayatList.innerHTML = '';
+       if (n.referral_histori?.length > 0) {
+         n.referral_histori.forEach(r => {
+           const li = document.createElement('li');
+           li.className = 'list-group-item';
+           li.innerHTML =
+             `<strong>${r.product}</strong><br><small>${r.date}</small><br>${r.description || r.keterangan || ''}`;
+           riwayatList.appendChild(li);
+         });
+       } else {
+         riwayatList.innerHTML = `<li class="list-group-item text-muted">Belum ada referral</li>`;
+       }
 
-    if (isView) {
-      renderAIRekomendasi(n.rekomendasi_ai || []);
-      colAI.style.display = 'block';
-      colForm.className = 'col-md-6';
-    } else {
-      colAI.style.display = 'none';
-      colForm.className = 'col-md-12';
-    }
+       if (isView) {
+         renderAIRekomendasi(n.rekomendasi_ai || []);
+         colAI.style.display = 'block';
+         colForm.className = 'col-md-6';
+       } else {
+         colAI.style.display = 'none';
+         colForm.className = 'col-md-12';
+       }
 
-    // Set readonly mode
-    form.querySelectorAll('input, textarea, select').forEach(el => {
-      el.readOnly = isView;
-      el.disabled = isView;
-    });
+       // Set readonly mode
+       form.querySelectorAll('input, textarea, select').forEach(el => {
+         el.readOnly = isView;
+         el.disabled = isView;
+       });
 
-    btnSimpan.style.display = isView ? 'none' : 'inline-block';
-    modalLabel.textContent = isView ? `Profil : ${n.nama}` : `Edit: ${n.nama}`;
-  }
+       btnSimpan.style.display = isView ? 'none' : 'inline-block';
+       modalLabel.textContent = isView ? `Profil : ${n.nama}` : `Edit: ${n.nama}`;
+     }
 
-  // ===== Rekomendasi AI Rendering =====
-  function renderAIRekomendasi(data) {
-    rekomendasiAI.innerHTML = '';
-    data.forEach(rec => {
-      const box = document.createElement('div');
-      box.className = 'rekomendasi-card animate__animated animate__fadeInUp';
-      box.innerHTML = `
+     // ===== Rekomendasi AI Rendering =====
+     function renderAIRekomendasi(data) {
+       rekomendasiAI.innerHTML = '';
+       data.forEach(rec => {
+         const box = document.createElement('div');
+         box.className = 'rekomendasi-card animate__animated animate__fadeInUp';
+         box.innerHTML = `
         <div class="d-flex justify-content-between align-items-start">
           <h6 class="mb-1 text-primary"><i class="bi bi-lightbulb me-2"></i>${rec.produk}</h6>
           <span class="badge bg-info text-dark">AI</span>
         </div>
         <small class="text-muted d-block mt-1">${rec.script}</small>
       `;
-      rekomendasiAI.appendChild(box);
-    });
+         rekomendasiAI.appendChild(box);
+       });
+     }
+
+     // ===== Submit Edit Form =====
+     form.onsubmit = async e => {
+       e.preventDefault();
+       const data = new FormData(form);
+       document.querySelectorAll('.produk-item:checked').forEach(cb => {
+         data.append('produk', cb.value);
+       });
+
+       try {
+         const res = await fetch('/pic/edit_nasabah', {
+           method: 'POST',
+           body: data
+         });
+         if (res.ok) {
+           location.reload();
+         } else {
+           alert('Gagal menyimpan perubahan.');
+         }
+       } catch (err) {
+         alert('Terjadi kesalahan saat menyimpan.');
+         console.error(err);
+       }
+     };
+
+
+     // ===== Table Filter Logic =====
+     const rows = Array.from(document.querySelectorAll('#tblReferral tbody tr'));
+     document.getElementById('searchNm').oninput = applyFilter;
+     document.getElementById('filterProduk').onchange = applyFilter;
+     document.getElementById('filterTanggal').onchange = applyFilter;
+
+     function applyFilter() {
+       const keyword = document.getElementById('searchNm').value.toLowerCase();
+       const produk = document.getElementById('filterProduk').value.toLowerCase();
+       const tanggal = document.getElementById('filterTanggal')?.value; // opsional tanggal filter
+
+       rows.forEach(row => {
+         const cells = row.innerText.toLowerCase();
+         const lastProd = (row.dataset.lastProduct || '').toLowerCase();
+         const lastDate = (row.dataset.lastDate || '');
+
+         const matchKeyword = keyword && cells.includes(keyword);
+         const matchProduk = produk && lastProd === produk;
+         const matchTanggal = tanggal && lastDate === tanggal;
+
+         const match = matchKeyword || matchProduk || matchTanggal;
+
+         row.style.display = (keyword || produk || tanggal) ? (match ? '' : 'none') : '';
+       });
+     }
+
+     // ===== Export Excel =====
+     document.getElementById('btnExport').onclick = async () => {
+       try {
+         const resp = await fetch('/pic/export_excel', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json'
+           },
+           body: JSON.stringify({
+             search: document.getElementById('searchNm').value,
+             filterProduk: document.getElementById('filterProduk').value,
+             filterTanggal: document.getElementById('filterTanggal')?.value
+           })
+         });
+
+         const res = await resp.json();
+
+         if (res.success) {
+           // Unduh file Excel terlebih dahulu
+           const a1 = document.createElement('a');
+           a1.href = res.excel_url;
+           a1.download = res.excel_url.split('/').pop(); // Nama file dari backend
+           document.body.appendChild(a1);
+           a1.click();
+           a1.remove();
+
+           // Delay agar tidak bentrok saat membuka 2 file bersamaan
+           setTimeout(() => {
+             const a2 = document.createElement('a');
+             a2.href = res.password_url;
+             a2.download = res.password_url.split('/').pop(); // Nama file dari backend
+             document.body.appendChild(a2);
+             a2.click();
+             a2.remove();
+           }, 800); // Delay 0.8 detik untuk memberi jeda antar unduhan
+         } else {
+           alert('Gagal mengekspor file.');
+         }
+       } catch (err) {
+         console.error('Error saat ekspor:', err);
+         alert('Terjadi kesalahan saat mengekspor file.');
+       }
+     };
+
+   });
+ </script>
+ <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
+ <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+ <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<style>
+  .pagination .page-link {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    margin: 0 4px;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
   }
 
-  // ===== Submit Edit Form =====
-  form.onsubmit = async e => {
-    e.preventDefault();
-    const data = new FormData(form);
-    document.querySelectorAll('.produk-item:checked').forEach(cb => {
-      data.append('produk', cb.value);
+  .pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.3);
+  }
+
+  .pagination .page-link:hover {
+    background-color: #e9f2ff;
+    color: #0d6efd;
+  }
+
+  .pagination-lg .page-link {
+    font-size: 1.1rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+</style>
+
+<style>
+  #tblReferral th, #tblReferral td {
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  #tblReferral thead {
+    background: linear-gradient(to right, #cfe2ff, #e7f1ff);
+  }
+
+  #tblReferral tbody tr:hover {
+    background-color: #f0f8ff !important;
+    cursor: pointer;
+  }
+
+  .table-responsive {
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+
+  .table th {
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+  }
+
+  .table td {
+    font-size: 0.92rem;
+  }
+
+  .btnView, .btnEdit {
+    transition: all 0.3s ease-in-out;
+  }
+
+  .btnView:hover {
+    background-color: #cfe2ff;
+    border-color: #86b7fe;
+  }
+
+  .btnEdit:hover {
+    background-color: #fff3cd;
+    border-color: #ffecb5;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    let tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function (el) {
+      new bootstrap.Tooltip(el);
     });
-
-    try {
-      const res = await fetch('/pic/edit_nasabah', {
-        method: 'POST',
-        body: data
-      });
-      if (res.ok) {
-        location.reload();
-      } else {
-        alert('Gagal menyimpan perubahan.');
-      }
-    } catch (err) {
-      alert('Terjadi kesalahan saat menyimpan.');
-      console.error(err);
-    }
-  };
-
-  
-  // ===== Table Filter Logic =====
-  const rows = Array.from(document.querySelectorAll('#tblReferral tbody tr'));
-  document.getElementById('searchNm').oninput = applyFilter;
-  document.getElementById('filterProduk').onchange = applyFilter;
-  document.getElementById('filterTanggal').onchange = applyFilter;
-
-  function applyFilter() {
-  const keyword = document.getElementById('searchNm').value.toLowerCase();
-  const produk = document.getElementById('filterProduk').value.toLowerCase();
-  const tanggal = document.getElementById('filterTanggal')?.value;  // opsional tanggal filter
-
-  rows.forEach(row => {
-    const cells = row.innerText.toLowerCase();
-    const lastProd = (row.dataset.lastProduct || '').toLowerCase();
-    const lastDate = (row.dataset.lastDate || '');
-
-    const matchKeyword = keyword && cells.includes(keyword);
-    const matchProduk = produk && lastProd === produk;
-    const matchTanggal = tanggal && lastDate === tanggal;
-
-    const match = matchKeyword || matchProduk || matchTanggal;
-
-    row.style.display = (keyword || produk || tanggal) ? (match ? '' : 'none') : '';
   });
-}
+</script> -->
 
-  // ===== Export Excel =====
- document.getElementById('btnExport').onclick = async () => {
-  try {
-    const resp = await fetch('/pic/export_excel', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        search: document.getElementById('searchNm').value,
-        filterProduk: document.getElementById('filterProduk').value,
-        filterTanggal: document.getElementById('filterTanggal')?.value
-      })
-    });
+<div class="floating-buttons"> <button id="btnExport" class="floating-btn btn-export"> <i
+      class="bi bi-file-earmark-spreadsheet"></i> <span>Export Data</span> </button> <button id="btnAddNasabah"
+    class="floating-btn btn-add" data-bs-toggle="modal" data-bs-target="#addNasabahModal"> <i
+      class="bi bi-person-plus"></i> <span>Tambah Nasabah</span> </button> </div>
 
-    const res = await resp.json();
+{% if show_access_modal %}
 
-    if (res.success) {
-      // Unduh file Excel terlebih dahulu
-      const a1 = document.createElement('a');
-      a1.href = res.excel_url;
-      a1.download = res.excel_url.split('/').pop(); // Nama file dari backend
-      document.body.appendChild(a1);
-      a1.click();
-      a1.remove();
+<div class="modal fade" id="accessDeniedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Akses Ditolak</h5>
+      </div>
+      <div class="modal-body">
+        <p>Halaman ini tidak dapat diakses oleh pengguna dengan role
+          <strong>{{ session['role'] }}</strong>.</p>
+        <p>Silakan logout dan login kembali dengan akun yang sesuai.</p>
+      </div>
+      <div class="modal-footer"> <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout
+          Sekarang</a> <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button> </div>
+    </div>
+  </div>
+</div> {% endif %}
 
-      // Delay agar tidak bentrok saat membuka 2 file bersamaan
-      setTimeout(() => {
-        const a2 = document.createElement('a');
-        a2.href = res.password_url;
-        a2.download = res.password_url.split('/').pop(); // Nama file dari backend
-        document.body.appendChild(a2);
-        a2.click();
-        a2.remove();
-      }, 800); // Delay 0.8 detik untuk memberi jeda antar unduhan
-    } else {
-      alert('Gagal mengekspor file.');
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const accessModal = document.getElementById('accessDeniedModal');
+    if (accessModal) {
+      const modal = new bootstrap.Modal(accessModal);
+      modal.show();
     }
-  } catch (err) {
-    console.error('Error saat ekspor:', err);
-    alert('Terjadi kesalahan saat mengekspor file.');
-  }
-};
-
   });
 </script>
 
-
-
-  <!-- Your JS logic remains as in the previous version -->
 </body>
 </html>

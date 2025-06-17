@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Super Admin - NORENA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  
+  <style>
+
+    body {
+      background: linear-gradient(to bottom right, #eaf4ff, #ffffff);
+      font-family: 'Segoe UI', sans-serif;
+      color: #2c3e50;
+    }
+
+    .table thead {
+      background-color: #0d6efd;
+      color: #fff;
+    }
+
+      .floating-buttons { position: fixed; bottom: 2rem; right: 2rem; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 1rem; z-index: 1050; } .floating-btn { background-color: #0d6efd; color: white;
+      border: none; border-radius: 50px; padding: 0.75rem 1rem; display: flex; align-items: center; font-size: 0.95rem;
+      font-weight: 500; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); cursor: pointer; transition: width 0.3s ease,
+      background-color 0.3s ease; overflow: hidden; white-space: nowrap; width: 3.5rem; } .floating-btn i { font-size:
+      1.25rem; margin-right: 0.5rem; } .floating-btn span { margin-left: 0.25rem; opacity: 0; transition: opacity 0.3s
+      ease; display: none; } .floating-btn:hover { width: 12rem; } .floating-btn:hover span { display: inline; opacity:
+      1; } .btn-export { background-color: #198754; } .btn-export:hover { background-color: #157347; } .btn-add {
+      background-color: #0d6efd; } .btn-add:hover { background-color: #0b5ed7; }
+
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="text-primary"><i class="bi bi-shield-lock-fill me-2"></i>Dashboard Super Admin</h2>
+      <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </a>
+    </div>
+
+    <form id="filterForm" method="get" action="{{ url_for('dashboard_superadmin') }}"
+        class="row mb-4">
+        <div class="col-md-6"> <input type="text" name="search" id="searchInput" class="form-control"
+                placeholder="Cari nama / username"
+                value="{{ request.args.get('search', '') }}"
+                autocomplete="off"> </div>
+        <div class="col-md-6"> <select name="filter_role" id="roleSelect" class="form-select">
+                <option value="">Semua Role</option> {% for r in ['karyawan', 'pic', 'admin', 'superadmin'] %} <option
+                    value="{{ r }}" {% if request.args.get('filter_role') == r %}selected{% endif %}>{{ r|capitalize }}
+                </option> {% endfor %}
+            </select> </div>
+    </form>
+
+    <div class="table-responsive shadow-sm rounded-4">
+      <table class="table table-hover align-middle bg-white text-center">
+        <thead class="table-primary">
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if user_list %}
+            {% for u in user_list %}
+            <tr>
+              <td>{{ u.username }}</td>
+              <td>{{ u.role }}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-info me-1 btnViewUser" data-username="{{ u.username }}">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning btnEditUser" data-username="{{ u.username }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="3" class="text-muted py-4"><em>Tidak ada data pengguna.</em></td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      <div class="text-muted">Menampilkan halaman <strong>{{ page }}</strong> dari <strong>{{ pages }}</strong></div>
+      <nav>
+        <ul class="pagination pagination-lg mb-0">
+          {% if page > 1 %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('dashboard_superadmin', page=page-1) }}">&laquo; Sebelumnya</a>
+          </li>
+          {% endif %}
+          {% for p in range(1, pages + 1) %}
+          <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('dashboard_superadmin', page=p) }}">{{ p }}</a>
+          </li>
+          {% endfor %}
+          {% if page < pages %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('dashboard_superadmin', page=page+1) }}">Berikutnya &raquo;</a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Floating Buttons -->
+
+  <!-- Modal: Tambah User -->
+  <div class="modal fade" id="modalAddUser" tabindex="-1">
+    <div class="modal-dialog">
+      <form method="post" action="{{ url_for('tambah_user') }}">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i>Tambah User</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3"><label>Username</label><input name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+            <div class="mb-3">
+              <label>Role</label>
+              <select name="role" class="form-select" required>
+                <option value="">-- Pilih Role --</option>
+                <option value="karyawan">Karyawan</option>
+                <option value="pic">PIC</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Superadmin</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Simpan</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: View/Edit User -->
+  <div class="modal fade" id="modalUser" tabindex="-1">
+    <div class="modal-dialog">
+      <form id="formUser">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 id="modalUserLabel" class="modal-title">Profil User</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="username" id="uUsername">
+            <div class="mb-3">
+              <label>Username</label>
+              <input type="text" id="uUsernameDisplay" class="form-control" readonly>
+            </div>
+            <div class="mb-3">
+              <label>Password</label>
+              <input type="password" class="form-control" id="uPassword" name="password" autocomplete="new-password" />
+            </div>
+            <div class="mb-3">
+              <label>Role</label>
+              <select id="uRole" name="role" class="form-select">
+                <option value="karyawan">Karyawan</option>
+                <option value="pic">PIC</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Superadmin</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-success" id="btnSimpanUser">Simpan Perubahan</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        btnExport.addEventListener('click', async () => {
+        const search = document.getElementById('searchInput')?.value || '';
+        const role = document.getElementById('roleSelect')?.value || '';
+
+        try {
+        const res = await fetch('/superadmin/export_users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search, filter_role: role })
+        });
+        const result = await res.json();
+        if (!result.success) {
+        alert('Gagal mengekspor data.');
+        return;
+        }
+
+        // Unduh file excel
+        const a1 = document.createElement('a');
+        a1.href = result.excel_url;
+        a1.download = result.excel_url.split('/').pop();
+        document.body.appendChild(a1);
+        a1.click();
+        a1.remove();
+
+        setTimeout(() => {
+        const a2 = document.createElement('a');
+        a2.href = result.password_url;
+        a2.download = result.password_url.split('/').pop();
+        document.body.appendChild(a2);
+        a2.click();
+        a2.remove();
+        }, 700);
+        } catch (err) {
+        console.error(err);
+        alert('Terjadi kesalahan saat mengekspor.');
+        }
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('modalUser'));
+        const form = document.getElementById('formUser');
+        const label = document.getElementById('modalUserLabel');
+        const btnSimpan = document.getElementById('btnSimpanUser');
+        document.querySelectorAll('.btnViewUser, .btnEditUser').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const isView = btn.classList.contains('btnViewUser');
+                const username = btn.dataset.username;
+                try {
+                    const res = await fetch(`/superadmin/get_user?username=${username}`);
+                    const u = await res.json();
+                    form.reset();
+                    document.getElementById('uUsername').value = u.username;
+                    document.getElementById('uUsernameDisplay').value = u.username;
+                    document.getElementById('uPassword').value = '********';
+                    document.getElementById('uRole').value = u.role;
+                    form.querySelectorAll('input, select').forEach(el => {
+                        if (el.id !== 'uUsername') {
+                            el.disabled = isView;
+                            el.readOnly = isView;
+                        }
+                    });
+                    document.getElementById('uUsernameDisplay').disabled = true;
+                    btnSimpan.style.display = isView ? 'none' : 'inline-block';
+                    label.textContent = isView ? `View User: ${u.username}` :
+                        `Edit User: ${u.username}`;
+                    modal.show();
+                } catch (err) {
+                    alert('Gagal mengambil data user.');
+                    console.error(err);
+                }
+            });
+        });
+        form.onsubmit = async e => {
+            e.preventDefault();
+            const data = new FormData(form);
+            const pw = document.getElementById('uPassword').value;
+            if (pw === '********' || pw.trim() === '') {
+                data.delete('password');
+            }
+            try {
+                const res = await fetch('/superadmin/edit_user', {
+                    method: 'POST',
+                    body: data
+                });
+                if (res.ok) location.reload();
+                else alert('Gagal menyimpan perubahan.');
+            } catch (err) {
+                alert('Terjadi kesalahan saat menyimpan.');
+                console.error(err);
+            }
+        };
+    });
+
+    
+
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('filterForm');
+        const searchInput = document.getElementById('searchInput');
+        const roleSelect = document.getElementById('roleSelect');
+        let debounceTimer;
+
+        function submitForm() {
+            form.submit();
+        }
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(submitForm, 600);
+        });
+        roleSelect.addEventListener('change', submitForm);
+    });
+</script>
+  
+<div class="floating-buttons"> <button class="floating-btn btn-export" id="btnExport"> <i
+            class="bi bi-file-earmark-spreadsheet"></i> <span>Export Data</span> </button> <button
+        class="floating-btn btn-add" data-bs-toggle="modal" data-bs-target="#modalAddUser"> <i
+            class="bi bi-person-plus"></i> <span>Tambah User</span> </button> </div>
+
+
+{% if show_access_modal %}
+
+<div class="modal fade" id="accessDeniedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Akses Ditolak</h5>
+      </div>
+      <div class="modal-body">
+        <p>Halaman ini tidak dapat diakses oleh pengguna dengan role
+          <strong>{{ session['role'] }}</strong>.</p>
+        <p>Silakan logout dan login kembali dengan akun yang sesuai.</p>
+      </div>
+      <div class="modal-footer"> <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout
+          Sekarang</a> <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button> </div>
+    </div>
+  </div>
+</div> {% endif %}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const accessModal = document.getElementById('accessDeniedModal');
+    if (accessModal) {
+      const modal = new bootstrap.Modal(accessModal);
+      modal.show();
+    }
+  });
+</script>
+
+</body>
+</html>
